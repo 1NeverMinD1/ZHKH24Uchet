@@ -1,0 +1,70 @@
+{
+  "kind": "collectionType",
+  "collectionName": "companies",
+  "info": {
+    "singularName": "company",
+    "pluralName": "companies",
+    "displayName": "Company"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "bin": {
+      "type": "text",
+      "unique": true
+    },
+    "name_ru": {
+      "type": "text"
+    },
+    "name_kk": {
+      "type": "text"
+    },
+    "director_name": {
+      "type": "text"
+    },
+    "legal_address_ru": {
+      "type": "text"
+    },
+    "legal_address_kk": {
+      "type": "text"
+    },
+    "kato": {
+      "type": "text"
+    },
+    "okeD_code": {
+      "type": "text"
+    },
+    "okeD_name": {
+      "type": "text"
+    },
+    "company_status": {
+      "type": "enumeration",
+      "enum": [
+        "active",
+        "liquidated",
+        "suspended"
+      ]
+    },
+    "registration_date": {
+      "type": "date"
+    },
+    "is_vat_payer": {
+      "type": "boolean"
+    },
+    "company_size": {
+      "type": "enumeration",
+      "enum": [
+        "micro",
+        "small",
+        "medium",
+        "large"
+      ]
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "name_ru"
+    }
+  }
+}
