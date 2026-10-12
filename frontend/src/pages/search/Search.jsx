@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import client from "../../api/client";
 import "./_Search.scss";
 
@@ -10,6 +10,7 @@ const STATUS_LABELS = {
 };
 
 export default function Search() {
+  const navigate = useNavigate();
   const [params] = useSearchParams();
   const q = (params.get("q") || "").trim();
   const [result, setResult] = useState({ q: null, items: [], error: "" });
@@ -41,29 +42,24 @@ export default function Search() {
     };
   }, [q]);
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const value = String(new FormData(e.currentTarget).get("q") || "").trim();
+    if (!value) return;
+    navigate(`/search?q=${encodeURIComponent(value)}`);
+  };
+
+  let content;
+
   if (!q) {
-    return (
-      <section className="search">
-        <div className="search__inner">
-          <p className="search__message">Введите название или БИН компании</p>
-        </div>
-      </section>
+    content = (
+      <p className="search__message">Введите название или БИН компании</p>
     );
-  }
-
-  if (result.q !== q) {
-    return (
-      <section className="search">
-        <div className="search__inner">
-          <p className="search__message">Поиск...</p>
-        </div>
-      </section>
-    );
-  }
-
-  return (
-    <section className="search">
-      <div className="search__inner">
+  } else if (result.q !== q) {
+    content = <p className="search__message">Поиск...</p>;
+  } else {
+    content = (
+      <>
         <h1 className="search__title">Результаты по запросу «{q}»</h1>
 
         {result.error && <p className="search__message">{result.error}</p>}
@@ -94,6 +90,28 @@ export default function Search() {
             </Link>
           ))}
         </div>
+      </>
+    );
+  }
+
+  return (
+    <section className="search">
+      <div className="search__inner">
+        <form className="search__form" onSubmit={handleSubmit}>
+          <input
+            key={q}
+            className="search__input"
+            type="text"
+            name="q"
+            defaultValue={q}
+            placeholder="Введите название, БИН или ИИН компании"
+          />
+          <button className="search__button" type="submit">
+            Найти
+          </button>
+        </form>
+
+        {content}
       </div>
     </section>
   );

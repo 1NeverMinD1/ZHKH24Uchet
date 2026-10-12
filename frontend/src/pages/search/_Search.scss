@@ -10,6 +10,45 @@
     max-width: 820px;
   }
 
+  &__form {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+
+  &__input {
+    flex: 1;
+    padding: 14px 16px;
+    font-size: 15px;
+    font-family: inherit;
+    color: #1c1c1c;
+    background: #ffffff;
+    border: 1px solid #dce3ea;
+    border-radius: 6px;
+    outline: none;
+
+    &:focus {
+      border-color: #3a6ea5;
+    }
+  }
+
+  &__button {
+    padding: 0 28px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    color: #ffffff;
+    background: #3a6ea5;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+
+    &:hover {
+      background: #2b4c7e;
+    }
+  }
+
   &__title {
     margin-bottom: 24px;
     font-size: 24px;
