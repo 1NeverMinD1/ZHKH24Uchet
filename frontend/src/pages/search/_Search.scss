@@ -1,0 +1,81 @@
+.search {
+  display: flex;
+  justify-content: center;
+  padding: 60px 20px;
+  background: #f4f7fa;
+  min-height: 50vh;
+
+  &__inner {
+    width: 100%;
+    max-width: 820px;
+  }
+
+  &__title {
+    margin-bottom: 24px;
+    font-size: 24px;
+    color: #2b4c7e;
+  }
+
+  &__message {
+    font-size: 16px;
+    color: #5b6472;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    padding: 16px 20px;
+    background: #ffffff;
+    border: 1px solid #dce3ea;
+    border-radius: 8px;
+    color: inherit;
+    transition: border-color 0.2s ease;
+
+    &:hover {
+      border-color: #3a6ea5;
+    }
+
+    &-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #2b4c7e;
+    }
+
+    &-meta {
+      margin-top: 4px;
+      font-size: 13px;
+      color: #5b6472;
+    }
+  }
+
+  &__status {
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 4px;
+    white-space: nowrap;
+
+    &--active {
+      color: #1f6b43;
+      background: #e8f5ee;
+    }
+
+    &--liquidated {
+      color: #a12b2b;
+      background: #fbeaea;
+    }
+
+    &--suspended {
+      color: #8a5a12;
+      background: #fbf1de;
+    }
+  }
+}

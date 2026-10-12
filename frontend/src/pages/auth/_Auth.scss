@@ -1,0 +1,91 @@
+.auth {
+  display: flex;
+  justify-content: center;
+  padding: 80px 20px;
+  background: #f4f7fa;
+
+  &__form {
+    width: 100%;
+    max-width: 420px;
+    padding: 32px;
+    background: #ffffff;
+    border: 1px solid #dce3ea;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  &__title {
+    font-size: 26px;
+    color: #2b4c7e;
+  }
+
+  &__label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 14px;
+    color: #5b6472;
+  }
+
+  &__input {
+    padding: 12px 14px;
+    font-size: 15px;
+    font-family: inherit;
+    color: #1c1c1c;
+    border: 1px solid #dce3ea;
+    border-radius: 4px;
+    outline: none;
+
+    &:focus {
+      border-color: #3a6ea5;
+    }
+  }
+
+  &__error {
+    padding: 10px 12px;
+    font-size: 14px;
+    color: #a12b2b;
+    background: #fbeaea;
+    border-radius: 4px;
+  }
+
+  &__success {
+    padding: 10px 12px;
+    font-size: 14px;
+    color: #1f6b43;
+    background: #e8f5ee;
+    border-radius: 4px;
+  }
+
+  &__button {
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    color: #ffffff;
+    background: #3a6ea5;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+
+    &:hover {
+      background: #2b4c7e;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  &__footer {
+    font-size: 14px;
+    color: #5b6472;
+
+    a {
+      color: #3a6ea5;
+    }
+  }
+}

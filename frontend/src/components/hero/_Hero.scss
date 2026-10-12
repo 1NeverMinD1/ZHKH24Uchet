@@ -1,0 +1,50 @@
+@use "../../styles/variables";
+
+.hero {
+  background: #dcecfc;
+  padding: 80px 350px;
+  &__title {
+    width: 40%;
+    font-size: 40px;
+    color: variables.$primary-color;
+  }
+  &__blocks {
+    gap: 20px;
+
+    display: flex;
+    align-items: center;
+    &-info {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      &-intro {
+        font-size: 24px;
+        color: variables.$secondary-color;
+      }
+      &-search {
+        width: 80%;
+        &-input {
+          padding: 15px;
+          width: 80%;
+          border: 1px solid gray;
+          border-top-left-radius: 3px;
+          border-bottom-left-radius: 3px;
+        }
+        &-button {
+          border-top-right-radius: 3px;
+          border-bottom-right-radius: 3px;
+          width: 20%;
+          padding: 15px 20px;
+          border: 1px solid transparent;
+          background: variables.$primary-color;
+          color: white;
+          cursor: pointer;
+        }
+      }
+    }
+    &-block {
+      width: 50%;
+      min-height: 200px;
+    }
+  }
+}

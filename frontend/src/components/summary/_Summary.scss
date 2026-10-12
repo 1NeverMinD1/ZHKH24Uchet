@@ -1,0 +1,21 @@
+@use "./../../styles/variables";
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid rgba($color: #000000, $alpha: 0.2);
+  &__block {
+    align-items: center;
+    display: flex;
+    padding-block: 10px;
+    border-bottom: 1px solid rgba($color: #000000, $alpha: 0.2);
+    justify-content: space-between;
+    &-intro {
+      font-size: 30px;
+      color: variables.$primary-color;
+    }
+    &-text {
+      color: variables.$secondary-color;
+    }
+  }
+}

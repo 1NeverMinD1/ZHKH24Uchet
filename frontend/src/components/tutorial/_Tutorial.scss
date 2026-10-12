@@ -1,0 +1,42 @@
+@use "../../styles//variables";
+
+.tutorial {
+  margin-inline: 350px;
+  margin-top: 40px;
+  &__title {
+    margin-bottom: 40px;
+    font-size: variables.$header-size;
+    color: variables.$primary-color;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba($color: #000000, $alpha: 0.2);
+  }
+  &__blocks {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    &-block {
+      padding: 20px;
+      border: 1px solid rgba($color: #000000, $alpha: 0.2);
+      display: flex;
+      gap: 20px;
+      flex-direction: column;
+      &-num {
+        font-size: 20px;
+        font-weight: bold;
+        background: blue;
+        width: 35px;
+        height: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        border-radius: 50%;
+      }
+      &-intro {
+        color: variables.$primary-color;
+      }
+      &-text {
+        color: variables.$secondary-color;
+      }
+    }
+  }
+}

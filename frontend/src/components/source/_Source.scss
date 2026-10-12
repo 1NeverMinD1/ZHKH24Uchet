@@ -1,0 +1,23 @@
+@use "./../../styles/variables";
+
+.info__source {
+  margin-top: 40px;
+  padding: 40px 340px;
+  background: #dcecfc;
+  &-title {
+    margin-bottom: 20px;
+    font-size: variables.$header-size;
+    color: variables.$primary-color;
+  }
+  &-blocks {
+    display: flex;
+    gap: 20px;
+    &-block {
+      color: variables.$primary-color;
+      border-radius: 5px;
+      border: 1px solid rgba($color: #ffefef, $alpha: 0.2);
+      padding: 5px 10px;
+      background: white;
+    }
+  }
+}
