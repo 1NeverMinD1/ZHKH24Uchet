@@ -8,6 +8,7 @@ import Register from "./pages/register/Register";
 import Profile from "./pages/profile/Profile";
 import Company from "./pages/company/Company";
 import Search from "./pages/search/Search";
+import Companies from "./pages/companies/Companies";
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/company/:bin" element={<Company />} />
         <Route path="/search" element={<Search />} />
+        <Route path="/companies" element={<Companies />} />
       </Routes>
       <Footer />
     </main>

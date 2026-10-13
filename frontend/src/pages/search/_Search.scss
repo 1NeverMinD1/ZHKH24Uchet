@@ -66,6 +66,31 @@
     gap: 10px;
   }
 
+  &__more {
+    display: block;
+    margin: 24px auto 0;
+    padding: 12px 32px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    color: #3a6ea5;
+    background: #ffffff;
+    border: 1px solid #3a6ea5;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      color: #ffffff;
+      background: #3a6ea5;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
   &__item {
     display: flex;
     justify-content: space-between;

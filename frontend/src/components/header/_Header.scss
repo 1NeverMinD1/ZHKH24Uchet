@@ -1,50 +1,293 @@
 @use "./../../styles/variables";
 
 .header {
-  padding: 10px 350px;
-  align-items: center;
-  display: flex;
-  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #ffffff;
+  border-bottom: 1px solid #dce3ea;
+
+  &__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: min(1240px, 100% - 40px);
+    min-height: 68px;
+    margin: 0 auto;
+  }
+
   &__logo {
+    flex-shrink: 0;
+
     &-text {
       text-transform: uppercase;
       color: variables.$primary-color;
-      font-size: 30px;
-      font-weight: bold;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+  }
+
+  &__panel {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: space-between;
+    margin-left: 48px;
+  }
+
+  &__nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  &__link {
+    padding: 8px 14px;
+    font-size: 15px;
+    font-weight: 500;
+    color: #1c1c1c;
+    border-radius: 6px;
+    transition:
+      background 0.2s ease,
+      color 0.2s ease;
+
+    &:hover {
+      color: variables.$primary-color;
+      background: rgba(variables.$primary-color, 0.08);
+    }
+
+    &--active {
+      color: variables.$primary-color;
+      background: rgba(variables.$primary-color, 0.1);
+    }
+
+    &--soon {
+      color: #8a93a0;
+      cursor: default;
+
       &:hover {
-        cursor: pointer;
+        color: #8a93a0;
+        background: none;
       }
     }
   }
-  &__menu {
-    display: flex;
-    gap: 20px;
-    &-item {
-    }
-  }
-  &__auth,
-  &__logout {
-    padding: 10px 15px;
-    border: 1px solid rgba($color: #000000, $alpha: 0.2);
-    border-radius: 5px;
-    cursor: pointer;
-    background: none;
-    font-family: inherit;
-    font-size: inherit;
-    transition: all 0.3s ease;
-    &:hover {
-      transition: all 0.3s ease;
-      background: variables.$primary-color;
-      color: white;
-    }
-  }
-  &__user {
+
+  &__actions {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 10px;
+  }
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 9px 18px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &--outline {
+      color: #1c1c1c;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      background: none;
+
+      &:hover {
+        color: #ffffff;
+        background: variables.$primary-color;
+        border-color: variables.$primary-color;
+      }
+    }
+
+    &--filled {
+      color: #ffffff;
+      border: 1px solid variables.$primary-color;
+      background: variables.$primary-color;
+
+      &:hover {
+        opacity: 0.88;
+      }
+    }
+  }
+
+  &__user {
+    position: relative;
+  }
+
+  &__trigger {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 12px 5px 6px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    color: #1c1c1c;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover,
+    &--open {
+      background: rgba(variables.$primary-color, 0.06);
+      border-color: #dce3ea;
+    }
+  }
+
+  &__avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #ffffff;
+    background: variables.$primary-color;
+    border-radius: 50%;
+  }
+
+  &__chevron {
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid #5b6472;
+    border-bottom: 2px solid #5b6472;
+    transform: rotate(45deg) translateY(-2px);
+    transition: transform 0.2s ease;
+
+    &--open {
+      transform: rotate(-135deg) translateY(-2px);
+    }
+  }
+
+  &__dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 110;
+    min-width: 230px;
+    padding: 8px;
+    background: #ffffff;
+    border: 1px solid #dce3ea;
+    border-radius: 10px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+
+    &-head {
+      padding: 8px 10px 10px;
+      margin-bottom: 6px;
+      border-bottom: 1px solid #eef1f5;
+    }
+
     &-name {
-      font-weight: 500;
-      color: variables.$primary-color;
+      font-size: 14px;
+      font-weight: 600;
+      color: #1c1c1c;
+    }
+
+    &-email {
+      margin-top: 2px;
+      font-size: 13px;
+      color: #5b6472;
+      word-break: break-all;
+    }
+
+    &-item {
+      display: block;
+      width: 100%;
+      padding: 9px 10px;
+      font-family: inherit;
+      font-size: 14px;
+      text-align: left;
+      color: #1c1c1c;
+      background: none;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+
+      &:hover {
+        color: variables.$primary-color;
+        background: rgba(variables.$primary-color, 0.08);
+      }
+    }
+  }
+
+  &__burger {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 40px;
+    height: 40px;
+    padding: 0 9px;
+    background: none;
+    border: 1px solid #dce3ea;
+    border-radius: 6px;
+    cursor: pointer;
+
+    span {
+      display: block;
+      height: 2px;
+      background: #1c1c1c;
+      border-radius: 2px;
+    }
+  }
+
+  @media (max-width: 900px) {
+    &__burger {
+      display: flex;
+    }
+
+    &__panel {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 16px;
+      margin-left: 0;
+      padding: 16px 20px 20px;
+      background: #ffffff;
+      border-bottom: 1px solid #dce3ea;
+
+      &--open {
+        display: flex;
+      }
+    }
+
+    &__nav {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    &__link {
+      padding: 12px 14px;
+    }
+
+    &__actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    &__btn {
+      padding: 12px 16px;
+    }
+
+    &__trigger {
+      width: 100%;
+    }
+
+    &__dropdown {
+      position: static;
+      margin-top: 8px;
+      box-shadow: none;
     }
   }
 }

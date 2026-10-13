@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import client from "../../api/client";
 import "./_Company.scss";
 
@@ -22,34 +22,51 @@ const formatDate = (value) => {
   return `${day}.${month}.${year}`;
 };
 
+function Row({ label, value, locked }) {
+  return (
+    <div className="company__row">
+      <dt>{label}</dt>
+      <dd>
+        {locked ? (
+          <span className="company__locked">Доступно после регистрации</span>
+        ) : (
+          value
+        )}
+      </dd>
+    </div>
+  );
+}
+
 export default function Company() {
   const { bin } = useParams();
-  const [result, setResult] = useState({ bin: null, company: null, error: "" });
+  const [result, setResult] = useState({
+    bin: null,
+    company: null,
+    access: "guest",
+    error: "",
+  });
 
   useEffect(() => {
     let cancelled = false;
 
     client
-      .get("/companies", { params: { "filters[bin][$eq]": bin } })
+      .get(`/company-card/${bin}`)
       .then(({ data }) => {
-        if (cancelled) return;
-        if (data.data.length === 0) {
-          setResult({
-            bin,
-            company: null,
-            error: "Компания с таким БИН не найдена",
-          });
-          return;
-        }
-        setResult({ bin, company: data.data[0], error: "" });
-      })
-      .catch(() => {
         if (cancelled) return;
         setResult({
           bin,
-          company: null,
-          error: "Не удалось загрузить данные",
+          company: data.data,
+          access: data.access,
+          error: "",
         });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const message =
+          err.response?.status === 404
+            ? "Компания с таким БИН не найдена"
+            : "Не удалось загрузить данные";
+        setResult({ bin, company: null, access: "guest", error: message });
       });
 
     return () => {
@@ -71,6 +88,7 @@ export default function Company() {
 
   const company = result.company;
   const status = company.company_status;
+  const locked = result.access !== "member";
 
   return (
     <section className="company">
@@ -88,39 +106,58 @@ export default function Company() {
           </span>
         </div>
 
+        {locked && (
+          <div className="company__notice">
+            <p>
+              Часть данных скрыта. Зарегистрируйтесь или войдите, чтобы увидеть
+              руководителя, адрес, дату регистрации и другие сведения.
+            </p>
+            <div className="company__notice-actions">
+              <Link to="/register" className="company__notice-button">
+                Зарегистрироваться
+              </Link>
+              <Link to="/login" className="company__notice-link">
+                Войти
+              </Link>
+            </div>
+          </div>
+        )}
+
         <dl className="company__list">
-          <div className="company__row">
-            <dt>Руководитель</dt>
-            <dd>{company.director_name || "—"}</dd>
-          </div>
-          <div className="company__row">
-            <dt>Юридический адрес</dt>
-            <dd>{company.legal_address_ru || "—"}</dd>
-          </div>
-          <div className="company__row">
-            <dt>Вид деятельности (ОКЭД)</dt>
-            <dd>
-              {company.okeD_code
+          <Row
+            label="Вид деятельности (ОКЭД)"
+            value={
+              company.okeD_code
                 ? `${company.okeD_code} — ${company.okeD_name || ""}`
-                : "—"}
-            </dd>
-          </div>
-          <div className="company__row">
-            <dt>Дата регистрации</dt>
-            <dd>{formatDate(company.registration_date)}</dd>
-          </div>
-          <div className="company__row">
-            <dt>Плательщик НДС</dt>
-            <dd>{company.is_vat_payer ? "Да" : "Нет"}</dd>
-          </div>
-          <div className="company__row">
-            <dt>Размер предприятия</dt>
-            <dd>{SIZE_LABELS[company.company_size] || "—"}</dd>
-          </div>
-          <div className="company__row">
-            <dt>КАТО</dt>
-            <dd>{company.kato || "—"}</dd>
-          </div>
+                : "—"
+            }
+          />
+          <Row
+            label="Руководитель"
+            value={company.director_name || "—"}
+            locked={locked}
+          />
+          <Row
+            label="Юридический адрес"
+            value={company.legal_address_ru || "—"}
+            locked={locked}
+          />
+          <Row
+            label="Дата регистрации"
+            value={formatDate(company.registration_date)}
+            locked={locked}
+          />
+          <Row
+            label="Плательщик НДС"
+            value={company.is_vat_payer ? "Да" : "Нет"}
+            locked={locked}
+          />
+          <Row
+            label="Размер предприятия"
+            value={SIZE_LABELS[company.company_size] || "—"}
+            locked={locked}
+          />
+          <Row label="КАТО" value={company.kato || "—"} locked={locked} />
         </dl>
       </div>
     </section>

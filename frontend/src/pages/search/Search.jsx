@@ -20,14 +20,7 @@ export default function Search() {
     let cancelled = false;
 
     client
-      .get("/companies", {
-        params: {
-          "filters[$or][0][name_ru][$containsi]": q,
-          "filters[$or][1][name_kk][$containsi]": q,
-          "filters[$or][2][bin][$contains]": q,
-          "pagination[pageSize]": 20,
-        },
-      })
+      .get("/company-search", { params: { q } })
       .then(({ data }) => {
         if (cancelled) return;
         setResult({ q, items: data.data, error: "" });
@@ -79,7 +72,7 @@ export default function Search() {
                 <p className="search__item-name">{item.name_ru}</p>
                 <p className="search__item-meta">
                   БИН {item.bin}
-                  {item.legal_address_ru ? ` · ${item.legal_address_ru}` : ""}
+                  {item.okeD_code ? ` · ОКЭД ${item.okeD_code}` : ""}
                 </p>
               </div>
               <span
