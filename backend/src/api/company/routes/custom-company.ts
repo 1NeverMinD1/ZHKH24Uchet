@@ -15,5 +15,23 @@ export default {
       path: "/company-list",
       handler: "company.list",
     },
+    {
+      method: "GET",
+      path: "/sitemap.xml",
+      handler: "company.sitemapIndex",
+      config: { auth: false },
+    },
+    {
+      method: "GET",
+      path: "/sitemap-static.xml",
+      handler: "company.sitemapStatic",
+      config: { auth: false },
+    },
+    {
+      method: "GET",
+      path: "/sitemap-companies-:page.xml",
+      handler: "company.sitemapCompanies",
+      config: { auth: false },
+    },
   ],
 };

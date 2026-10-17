@@ -31,7 +31,46 @@ const MEMBER_FIELDS: any = [
   "director_name",
 ];
 
+const BIN_ONLY: any = ["bin"];
+
 const PAGE_SIZE = 20;
+const SITEMAP_CHUNK = 10000;
+const SITEMAP_TTL = 60 * 60 * 1000;
+const XML_HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n';
+
+const siteUrl = () =>
+  (process.env.SITE_URL || "http://localhost:5173").replace(/\/$/, "");
+
+const escapeXml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+
+const cache = new Map<string, { at: number; xml: string }>();
+
+const cached = async (key: string, build: () => Promise<string>) => {
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < SITEMAP_TTL) return hit.xml;
+
+  const xml = await build();
+  if (xml) cache.set(key, { at: Date.now(), xml });
+  return xml;
+};
+
+const urlset = (urls: string[]) =>
+  XML_HEAD +
+  '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+  urls.map((url) => `  <url><loc>${escapeXml(url)}</loc></url>`).join("\n") +
+  "\n</urlset>\n";
+
+const sendXml = (ctx: any, xml: string) => {
+  ctx.type = "application/xml";
+  ctx.set("Cache-Control", "public, max-age=3600");
+  ctx.body = xml;
+};
 
 export default factories.createCoreController(
   "api::company.company",
@@ -94,6 +133,62 @@ export default factories.createCoreController(
         data: items[0],
         access: isMember ? "member" : "guest",
       };
+    },
+
+    async sitemapIndex(ctx: any) {
+      const xml = await cached("index", async () => {
+        const total = await strapi.documents("api::company.company").count({});
+        const chunks = Math.ceil(total / SITEMAP_CHUNK);
+        const base = siteUrl();
+        const files = [`${base}/sitemap-static.xml`];
+
+        for (let i = 1; i <= chunks; i += 1) {
+          files.push(`${base}/sitemap-companies-${i}.xml`);
+        }
+
+        return (
+          XML_HEAD +
+          '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+          files
+            .map((file) => `  <sitemap><loc>${escapeXml(file)}</loc></sitemap>`)
+            .join("\n") +
+          "\n</sitemapindex>\n"
+        );
+      });
+
+      sendXml(ctx, xml);
+    },
+
+    async sitemapStatic(ctx: any) {
+      const base = siteUrl();
+      sendXml(ctx, urlset([`${base}/`, `${base}/companies`]));
+    },
+
+    async sitemapCompanies(ctx: any) {
+      const page = parseInt(String(ctx.params.page || ""), 10);
+      if (!Number.isInteger(page) || page < 1) {
+        return ctx.notFound("Карта сайта не найдена");
+      }
+
+      const xml = await cached(`companies-${page}`, async () => {
+        const items = await strapi.documents("api::company.company").findMany({
+          fields: BIN_ONLY,
+          sort: "id:asc",
+          start: (page - 1) * SITEMAP_CHUNK,
+          limit: SITEMAP_CHUNK,
+        });
+
+        if (items.length === 0) return "";
+
+        const base = siteUrl();
+        return urlset(items.map((item: any) => `${base}/company/${item.bin}`));
+      });
+
+      if (!xml) {
+        return ctx.notFound("Карта сайта не найдена");
+      }
+
+      sendXml(ctx, xml);
     },
   }),
 );

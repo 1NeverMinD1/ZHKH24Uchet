@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import client from "../../api/client";
+import SEO from "../../components/seo/SEO";
 import "./_Search.scss";
+import { shortName } from "../../utils/companyName";
 
 export default function Search() {
   const navigate = useNavigate();
@@ -63,7 +65,7 @@ export default function Search() {
               className="search__item"
             >
               <div>
-                <p className="search__item-name">{item.name_ru}</p>
+                <p className="search__item-name">{shortName(item.name_ru)}</p>
                 <p className="search__item-meta">
                   БИН {item.bin}
                   {item.locality_ru ? ` · ${item.locality_ru}` : ""}
@@ -78,6 +80,7 @@ export default function Search() {
 
   return (
     <section className="search">
+      <SEO title={q ? `Поиск: ${q}` : "Поиск компаний"} noindex />
       <div className="search__inner">
         <form className="search__form" onSubmit={handleSubmit}>
           <input

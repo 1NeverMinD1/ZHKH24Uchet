@@ -1,0 +1,41 @@
+.breadcrumbs {
+  margin-bottom: 20px;
+  font-size: 14px;
+
+  &__list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    list-style: none;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    color: #5b6472;
+
+    &:not(:last-child)::after {
+      content: "/";
+      color: #b6bfca;
+    }
+
+    a {
+      color: #3a6ea5;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+
+    span {
+      display: block;
+      max-width: 360px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+}

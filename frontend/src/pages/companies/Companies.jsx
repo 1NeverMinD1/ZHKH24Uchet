@@ -1,7 +1,19 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import client from "../../api/client";
+import SEO from "../../components/seo/SEO";
+import Breadcrumbs from "../../components/breadcrumbs/Breadcrumbs";
+import { shortName } from "../../utils/companyName";
 import "../search/_Search.scss";
+
+const SEO_TITLE = "Каталог компаний Казахстана";
+const SEO_DESCRIPTION =
+  "Каталог юридических лиц Казахстана: БИН, наименование, вид деятельности и местонахождение по данным открытых реестров.";
+
+const CRUMBS = [
+  { name: "Главная", path: "/" },
+  { name: "Компании", path: "/companies" },
+];
 
 export default function Companies() {
   const [items, setItems] = useState([]);
@@ -57,6 +69,7 @@ export default function Companies() {
   if (initialLoading) {
     return (
       <section className="search">
+        <SEO title={SEO_TITLE} description={SEO_DESCRIPTION} />
         <div className="search__inner">
           <p className="search__message">Загрузка...</p>
         </div>
@@ -66,7 +79,9 @@ export default function Companies() {
 
   return (
     <section className="search">
+      <SEO title={SEO_TITLE} description={SEO_DESCRIPTION} />
       <div className="search__inner">
+        <Breadcrumbs items={CRUMBS} />
         <h1 className="search__title">Компании</h1>
 
         {error && <p className="search__message">{error}</p>}
@@ -83,7 +98,7 @@ export default function Companies() {
               className="search__item"
             >
               <div>
-                <p className="search__item-name">{item.name_ru}</p>
+                <p className="search__item-name">{shortName(item.name_ru)}</p>
                 <p className="search__item-meta">
                   БИН {item.bin}
                   {item.locality_ru ? ` · ${item.locality_ru}` : ""}

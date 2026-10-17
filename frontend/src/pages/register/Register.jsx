@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import client from "../../api/client";
+import SEO from "../../components/seo/SEO";
 import "../auth/_Auth.scss";
 
 export default function Register() {
@@ -49,6 +50,7 @@ export default function Register() {
 
   return (
     <section className="auth">
+      <SEO title="Регистрация" noindex />
       <form className="auth__form" onSubmit={handleSubmit}>
         <h1 className="auth__title">Регистрация</h1>
 
