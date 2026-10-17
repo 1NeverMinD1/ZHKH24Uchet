@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+import { Link, NavLink } from "../../i18n/router";
+import { useNavigate } from "../../i18n/useNavigate";
+import { useLocale } from "../../i18n/context";
+import LanguageSwitcher from "../language/LanguageSwitcher";
+import StableLabel from "./StableLabel";
 import "./_Header.scss";
 
 const getInitials = (user) => {
@@ -11,13 +16,14 @@ const getInitials = (user) => {
 export default function Header() {
   useLocation();
   const navigate = useNavigate();
+  const { t } = useLocale();
   const [, setTick] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   const userRef = useRef(null);
 
   useEffect(() => {
-    const sync = () => setTick((t) => t + 1);
+    const sync = () => setTick((n) => n + 1);
     window.addEventListener("user-updated", sync);
     return () => window.removeEventListener("user-updated", sync);
   }, []);
@@ -65,7 +71,7 @@ export default function Header() {
         <button
           className="header__burger"
           type="button"
-          aria-label="Меню"
+          aria-label={t("header.menu")}
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((open) => !open)}
         >
@@ -79,17 +85,24 @@ export default function Header() {
         >
           <nav className="header__nav">
             <NavLink to="/companies" className={linkClass} onClick={closeAll}>
-              Компании
+              <StableLabel k="header.companies" />
             </NavLink>
-            <span className="header__link header__link--soon" title="Скоро">
-              Реестры
+            <span
+              className="header__link header__link--soon"
+              title={t("header.soon")}
+            >
+              <StableLabel k="header.registries" />
             </span>
-            <span className="header__link header__link--soon" title="Скоро">
-              О сервисе
+            <span
+              className="header__link header__link--soon"
+              title={t("header.soon")}
+            >
+              <StableLabel k="header.about" />
             </span>
           </nav>
 
           <div className="header__actions">
+            <LanguageSwitcher />
             {isAuth ? (
               <div className="header__user" ref={userRef}>
                 <button
@@ -120,14 +133,14 @@ export default function Header() {
                       className="header__dropdown-item"
                       onClick={closeAll}
                     >
-                      Личный профиль
+                      {t("header.profile")}
                     </Link>
                     <button
                       className="header__dropdown-item"
                       type="button"
                       onClick={handleLogout}
                     >
-                      Выйти
+                      {t("header.logout")}
                     </button>
                   </div>
                 )}
@@ -139,14 +152,14 @@ export default function Header() {
                   className="header__btn header__btn--outline"
                   onClick={closeAll}
                 >
-                  Войти
+                  <StableLabel k="header.login" />
                 </Link>
                 <Link
                   to="/register"
                   className="header__btn header__btn--filled"
                   onClick={closeAll}
                 >
-                  Регистрация
+                  <StableLabel k="header.register" />
                 </Link>
               </>
             )}

@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "../../i18n/useNavigate";
+import { useLocale } from "../../i18n/context";
 import Summary from "../summary/Sumary";
 import "./_Hero.scss";
 
-const EXAMPLES = ["КВИН ТРАК", "240140016751"];
+const EXAMPLES = ["ЖЕЗКАЗГАНРЕДМЕТ", "030340002448"];
 
 export default function Hero() {
   const navigate = useNavigate();
+  const { t } = useLocale();
   const [query, setQuery] = useState("");
 
   const goSearch = (value) => {
@@ -24,15 +26,12 @@ export default function Hero() {
     <section className="hero">
       <div className="hero__inner">
         <div className="hero__content">
-          <span className="hero__badge">Открытые данные госреестров РК</span>
+          <span className="hero__badge">{t("hero.badge")}</span>
           <h1 className="hero__title">
-            Проверьте любую компанию Казахстана{" "}
-            <span className="hero__title-accent">за 1 минуту</span>
+            {t("hero.titleStart")}{" "}
+            <span className="hero__title-accent">{t("hero.titleAccent")}</span>
           </h1>
-          <p className="hero__intro">
-            БИН, руководитель, адрес, вид деятельности — по данным 10+
-            официальных государственных источников
-          </p>
+          <p className="hero__intro">{t("hero.intro")}</p>
 
           <form className="hero__search" onSubmit={handleSubmit}>
             <svg
@@ -53,17 +52,17 @@ export default function Hero() {
             <input
               className="hero__search-input"
               type="text"
-              placeholder="Введите название, БИН или ИИН компании"
+              placeholder={t("hero.placeholder")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
             <button className="hero__search-button" type="submit">
-              Найти
+              {t("hero.button")}
             </button>
           </form>
 
           <div className="hero__examples">
-            <span>Попробуйте:</span>
+            <span>{t("hero.try")}</span>
             {EXAMPLES.map((example) => (
               <button
                 key={example}

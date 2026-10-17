@@ -1,0 +1,17 @@
+.stable {
+  display: inline-grid;
+
+  &__text,
+  &__ghost {
+    grid-area: 1 / 1;
+    display: block;
+    white-space: nowrap;
+    text-align: center;
+  }
+
+  &__ghost {
+    height: 0;
+    overflow: hidden;
+    visibility: hidden;
+  }
+}

@@ -1,15 +1,26 @@
+import { useLocale } from "../../i18n/context";
 import "./_Source.scss";
 
+const SOURCES = [
+  "stat.gov.kz",
+  "kgd.gov.kz",
+  "egov.kz",
+  "goszakup.gov.kz",
+  "elicense.kz",
+];
+
 export default function Source() {
+  const { t } = useLocale();
+
   return (
     <div className="info__source">
-      <h2 className="info__source-title">Данные из официальных источников</h2>
+      <h2 className="info__source-title">{t("source.title")}</h2>
       <div className="info__source-blocks">
-        <p className="info__source-blocks-block">stat.gov.kz</p>
-        <p className="info__source-blocks-block">kgd.gov.kz</p>
-        <p className="info__source-blocks-block">egov.kz</p>
-        <p className="info__source-blocks-block">goszakup.gov.kz</p>
-        <p className="info__source-blocks-block">elicense.kz</p>
+        {SOURCES.map((source) => (
+          <p className="info__source-blocks-block" key={source}>
+            {source}
+          </p>
+        ))}
       </div>
     </div>
   );

@@ -1,62 +1,64 @@
+import { useLocale } from "../../i18n/context";
 import "./_Footer.scss";
 
 export default function Footer() {
+  const { t } = useLocale();
+
   return (
     <footer className="footer">
       <div className="footer__up">
         <div className="footer__up-intro">
           <h2 className="footer__up-intro-header">ЖКХ24 Учет</h2>
-          <p className="footer__up-intro-text">
-            Проект на основе открытых государственных данных Республики
-            Казахстан.
-          </p>
+          <p className="footer__up-intro-text">{t("footer.intro")}</p>
         </div>
         <div className="footer__up-info">
           <div className="footer__up-info-block">
-            <h3 className="footer__up-info-block-header">Сервис</h3>
+            <h3 className="footer__up-info-block-header">
+              {t("footer.service")}
+            </h3>
             <ul className="footer__up-info-block-list">
               <li className="footer__up-info-block-list-item">
-                <a>Компании</a>
+                <a>{t("footer.companies")}</a>
               </li>
               <li className="footer__up-info-block-list-item">
-                <a>Города</a>
+                <a>{t("footer.cities")}</a>
               </li>
               <li className="footer__up-info-block-list-item">
-                <a>ОКЭД</a>
+                <a>{t("footer.oked")}</a>
               </li>
             </ul>
           </div>
           <div className="footer__up-info-block">
-            <h3 className="footer__up-info-block-header">О нас</h3>
+            <h3 className="footer__up-info-block-header">
+              {t("footer.about")}
+            </h3>
             <ul className="footer__up-info-block-list">
               <li className="footer__up-info-block-list-item">
-                <a>Контакты</a>
+                <a>{t("footer.contacts")}</a>
               </li>
               <li className="footer__up-info-block-list-item">
-                <a>FAQ</a>
+                <a>{t("footer.faq")}</a>
               </li>
             </ul>
           </div>
           <div className="footer__up-info-block">
-            <h3 className="footer__up-info-block-header">Правовое</h3>
+            <h3 className="footer__up-info-block-header">
+              {t("footer.legal")}
+            </h3>
             <ul className="footer__up-info-block-list">
               <li className="footer__up-info-block-list-item">
-                <a>Соглашение</a>
+                <a>{t("footer.terms")}</a>
               </li>
               <li className="footer__up-info-block-list-item">
-                <a>Политика данных</a>
+                <a>{t("footer.privacy")}</a>
               </li>
             </ul>
           </div>
         </div>
       </div>
       <div className="footer__down">
-        <p className="footer__down-text">
-          © 2026 Реестр.kz — Все права защищены
-        </p>
-        <p className="footer__down-text">
-          Данные основаны на открытых реестрах РК
-        </p>
+        <p className="footer__down-text">{t("footer.rights")}</p>
+        <p className="footer__down-text">{t("footer.basedOn")}</p>
       </div>
     </footer>
   );
