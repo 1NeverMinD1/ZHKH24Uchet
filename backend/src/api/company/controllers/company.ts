@@ -1,23 +1,34 @@
 import { factories } from "@strapi/strapi";
 
+const RESTRICT_GUESTS = false;
+
 const PUBLIC_FIELDS: any = [
   "bin",
   "name_ru",
   "name_kk",
-  "company_status",
-  "okeD_code",
-  "okeD_name",
+  "oked_code",
+  "oked_name_ru",
+  "oked_name_kk",
+  "locality_ru",
+  "locality_kk",
 ];
 
 const MEMBER_FIELDS: any = [
   ...PUBLIC_FIELDS,
-  "director_name",
-  "legal_address_ru",
-  "legal_address_kk",
-  "kato",
   "registration_date",
-  "is_vat_payer",
-  "company_size",
+  "secondary_oked",
+  "krp_code",
+  "krp_name_ru",
+  "krp_name_kk",
+  "kse_code",
+  "kse_name_ru",
+  "kse_name_kk",
+  "kfs_code",
+  "kfs_name_ru",
+  "kfs_name_kk",
+  "kato",
+  "legal_address",
+  "director_name",
 ];
 
 const PAGE_SIZE = 20;
@@ -67,7 +78,7 @@ export default factories.createCoreController(
 
     async card(ctx: any) {
       const bin = String(ctx.params.bin || "").trim();
-      const isMember = Boolean(ctx.state.user);
+      const isMember = !RESTRICT_GUESTS || Boolean(ctx.state.user);
 
       const items = await strapi.documents("api::company.company").findMany({
         filters: { bin: { $eq: bin } },

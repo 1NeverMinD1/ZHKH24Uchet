@@ -7,64 +7,37 @@
     "displayName": "Company"
   },
   "options": {
-    "draftAndPublish": true
+    "draftAndPublish": false
   },
   "pluginOptions": {},
   "attributes": {
     "bin": {
-      "type": "text",
-      "unique": true
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "minLength": 12,
+      "maxLength": 12
     },
-    "name_ru": {
-      "type": "text"
-    },
-    "name_kk": {
-      "type": "text"
-    },
-    "director_name": {
-      "type": "text"
-    },
-    "legal_address_ru": {
-      "type": "text"
-    },
-    "legal_address_kk": {
-      "type": "text"
-    },
-    "kato": {
-      "type": "text"
-    },
-    "okeD_code": {
-      "type": "text"
-    },
-    "okeD_name": {
-      "type": "text"
-    },
-    "company_status": {
-      "type": "enumeration",
-      "enum": [
-        "active",
-        "liquidated",
-        "suspended"
-      ]
-    },
-    "registration_date": {
-      "type": "date"
-    },
-    "is_vat_payer": {
-      "type": "boolean"
-    },
-    "company_size": {
-      "type": "enumeration",
-      "enum": [
-        "micro",
-        "small",
-        "medium",
-        "large"
-      ]
-    },
-    "slug": {
-      "type": "uid",
-      "targetField": "name_ru"
-    }
+    "name_kk": { "type": "text" },
+    "name_ru": { "type": "text", "required": true },
+    "registration_date": { "type": "date" },
+    "oked_code": { "type": "string" },
+    "oked_name_kk": { "type": "text" },
+    "oked_name_ru": { "type": "text" },
+    "secondary_oked": { "type": "text" },
+    "krp_code": { "type": "string" },
+    "krp_name_kk": { "type": "text" },
+    "krp_name_ru": { "type": "text" },
+    "kse_code": { "type": "string" },
+    "kse_name_kk": { "type": "text" },
+    "kse_name_ru": { "type": "text" },
+    "kfs_code": { "type": "string" },
+    "kfs_name_kk": { "type": "text" },
+    "kfs_name_ru": { "type": "text" },
+    "kato": { "type": "string" },
+    "locality_kk": { "type": "text" },
+    "locality_ru": { "type": "text" },
+    "legal_address": { "type": "text" },
+    "director_name": { "type": "string" }
   }
 }

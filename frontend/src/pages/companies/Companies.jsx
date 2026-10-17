@@ -3,12 +3,6 @@ import { Link } from "react-router-dom";
 import client from "../../api/client";
 import "../search/_Search.scss";
 
-const STATUS_LABELS = {
-  active: "Действующая",
-  liquidated: "Ликвидирована",
-  suspended: "Приостановлена",
-};
-
 export default function Companies() {
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(1);
@@ -92,14 +86,9 @@ export default function Companies() {
                 <p className="search__item-name">{item.name_ru}</p>
                 <p className="search__item-meta">
                   БИН {item.bin}
-                  {item.okeD_code ? ` · ОКЭД ${item.okeD_code}` : ""}
+                  {item.locality_ru ? ` · ${item.locality_ru}` : ""}
                 </p>
               </div>
-              <span
-                className={`search__status search__status--${item.company_status}`}
-              >
-                {STATUS_LABELS[item.company_status] || "—"}
-              </span>
             </Link>
           ))}
         </div>

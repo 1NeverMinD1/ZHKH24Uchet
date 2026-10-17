@@ -3,19 +3,6 @@ import { Link, useParams } from "react-router-dom";
 import client from "../../api/client";
 import "./_Company.scss";
 
-const STATUS_LABELS = {
-  active: "Действующая",
-  liquidated: "Ликвидирована",
-  suspended: "Приостановлена",
-};
-
-const SIZE_LABELS = {
-  micro: "Микропредприятие",
-  small: "Малое предприятие",
-  medium: "Среднее предприятие",
-  large: "Крупное предприятие",
-};
-
 const formatDate = (value) => {
   if (!value) return "—";
   const [year, month, day] = value.split("-");
@@ -30,7 +17,7 @@ function Row({ label, value, locked }) {
         {locked ? (
           <span className="company__locked">Доступно после регистрации</span>
         ) : (
-          value
+          value || "—"
         )}
       </dd>
     </div>
@@ -87,8 +74,10 @@ export default function Company() {
   }
 
   const company = result.company;
-  const status = company.company_status;
   const locked = result.access !== "member";
+  const oked = company.oked_code
+    ? `${company.oked_code} — ${company.oked_name_ru || ""}`
+    : "";
 
   return (
     <section className="company">
@@ -101,9 +90,6 @@ export default function Company() {
             )}
             <p className="company__bin">БИН {company.bin}</p>
           </div>
-          <span className={`company__status company__status--${status}`}>
-            {STATUS_LABELS[status] || "—"}
-          </span>
         </div>
 
         {locked && (
@@ -124,22 +110,21 @@ export default function Company() {
         )}
 
         <dl className="company__list">
+          <Row label="Вид деятельности (ОКЭД)" value={oked} />
           <Row
-            label="Вид деятельности (ОКЭД)"
-            value={
-              company.okeD_code
-                ? `${company.okeD_code} — ${company.okeD_name || ""}`
-                : "—"
-            }
+            label="Дополнительные ОКЭД"
+            value={company.secondary_oked}
+            locked={locked}
           />
+          <Row label="Населённый пункт" value={company.locality_ru} />
           <Row
-            label="Руководитель"
-            value={company.director_name || "—"}
+            label="Юридический адрес"
+            value={company.legal_address}
             locked={locked}
           />
           <Row
-            label="Юридический адрес"
-            value={company.legal_address_ru || "—"}
+            label="Руководитель"
+            value={company.director_name}
             locked={locked}
           />
           <Row
@@ -148,16 +133,21 @@ export default function Company() {
             locked={locked}
           />
           <Row
-            label="Плательщик НДС"
-            value={company.is_vat_payer ? "Да" : "Нет"}
+            label="Размер предприятия"
+            value={company.krp_name_ru}
             locked={locked}
           />
           <Row
-            label="Размер предприятия"
-            value={SIZE_LABELS[company.company_size] || "—"}
+            label="Сектор экономики"
+            value={company.kse_name_ru}
             locked={locked}
           />
-          <Row label="КАТО" value={company.kato || "—"} locked={locked} />
+          <Row
+            label="Форма собственности"
+            value={company.kfs_name_ru}
+            locked={locked}
+          />
+          <Row label="КАТО" value={company.kato} locked={locked} />
         </dl>
       </div>
     </section>

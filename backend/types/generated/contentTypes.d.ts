@@ -451,37 +451,47 @@ export interface ApiCompanyCompany extends Struct.CollectionTypeSchema {
     singularName: 'company';
   };
   options: {
-    draftAndPublish: true;
+    draftAndPublish: false;
   };
   attributes: {
-    bin: Schema.Attribute.Text & Schema.Attribute.Unique;
-    company_size: Schema.Attribute.Enumeration<
-      ['micro', 'small', 'medium', 'large']
-    >;
-    company_status: Schema.Attribute.Enumeration<
-      ['active', 'liquidated', 'suspended']
-    >;
+    bin: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 12;
+        minLength: 12;
+      }>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    director_name: Schema.Attribute.Text;
-    is_vat_payer: Schema.Attribute.Boolean;
-    kato: Schema.Attribute.Text;
-    legal_address_kk: Schema.Attribute.Text;
-    legal_address_ru: Schema.Attribute.Text;
+    director_name: Schema.Attribute.String;
+    kato: Schema.Attribute.String;
+    kfs_code: Schema.Attribute.String;
+    kfs_name_kk: Schema.Attribute.Text;
+    kfs_name_ru: Schema.Attribute.Text;
+    krp_code: Schema.Attribute.String;
+    krp_name_kk: Schema.Attribute.Text;
+    krp_name_ru: Schema.Attribute.Text;
+    kse_code: Schema.Attribute.String;
+    kse_name_kk: Schema.Attribute.Text;
+    kse_name_ru: Schema.Attribute.Text;
+    legal_address: Schema.Attribute.Text;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
+    locality_kk: Schema.Attribute.Text;
+    locality_ru: Schema.Attribute.Text;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::company.company'
     > &
       Schema.Attribute.Private;
     name_kk: Schema.Attribute.Text;
-    name_ru: Schema.Attribute.Text;
-    okeD_code: Schema.Attribute.Text;
-    okeD_name: Schema.Attribute.Text;
+    name_ru: Schema.Attribute.Text & Schema.Attribute.Required;
+    oked_code: Schema.Attribute.String;
+    oked_name_kk: Schema.Attribute.Text;
+    oked_name_ru: Schema.Attribute.Text;
     publishedAt: Schema.Attribute.DateTime;
     registration_date: Schema.Attribute.Date;
-    slug: Schema.Attribute.UID<'name_ru'>;
+    secondary_oked: Schema.Attribute.Text;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;

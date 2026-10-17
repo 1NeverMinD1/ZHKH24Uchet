@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Summary from "../summary/Sumary";
 import "./_Hero.scss";
 
-const EXAMPLES = ["E-KNOT", "200940024764"];
+const EXAMPLES = ["КВИН ТРАК", "240140016751"];
 
 export default function Hero() {
   const navigate = useNavigate();

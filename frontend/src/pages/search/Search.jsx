@@ -3,12 +3,6 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import client from "../../api/client";
 import "./_Search.scss";
 
-const STATUS_LABELS = {
-  active: "Действующая",
-  liquidated: "Ликвидирована",
-  suspended: "Приостановлена",
-};
-
 export default function Search() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -64,7 +58,7 @@ export default function Search() {
         <div className="search__list">
           {result.items.map((item) => (
             <Link
-              key={item.id}
+              key={item.bin}
               to={`/company/${item.bin}`}
               className="search__item"
             >
@@ -72,14 +66,9 @@ export default function Search() {
                 <p className="search__item-name">{item.name_ru}</p>
                 <p className="search__item-meta">
                   БИН {item.bin}
-                  {item.okeD_code ? ` · ОКЭД ${item.okeD_code}` : ""}
+                  {item.locality_ru ? ` · ${item.locality_ru}` : ""}
                 </p>
               </div>
-              <span
-                className={`search__status search__status--${item.company_status}`}
-              >
-                {STATUS_LABELS[item.company_status] || "—"}
-              </span>
             </Link>
           ))}
         </div>
