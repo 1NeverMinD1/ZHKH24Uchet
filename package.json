@@ -4,6 +4,7 @@
   },
   "devDependencies": {
     "concurrently": "^10.0.5",
-    "exceljs": "^4.4.0"
+    "exceljs": "^4.4.0",
+    "pg": "^8.23.1"
   }
 }

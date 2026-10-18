@@ -81,21 +81,23 @@ export default factories.createCoreController(
         return ctx.badRequest("Пустой запрос");
       }
 
+      const filters: any = /^\d+$/.test(q)
+        ? { bin: { $contains: q } }
+        : {
+            $or: [
+              { name_ru: { $containsi: q } },
+              { name_kk: { $containsi: q } },
+            ],
+          };
+
       const items = await strapi.documents("api::company.company").findMany({
-        filters: {
-          $or: [
-            { name_ru: { $containsi: q } },
-            { name_kk: { $containsi: q } },
-            { bin: { $contains: q } },
-          ],
-        },
+        filters,
         fields: PUBLIC_FIELDS,
         limit: 20,
       });
 
       ctx.body = { data: items };
     },
-
     async list(ctx: any) {
       const page = Math.max(
         parseInt(String(ctx.query.page || "1"), 10) || 1,

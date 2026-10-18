@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import client from "../../api/client";
 import SEO from "../../components/seo/SEO";
 import Breadcrumbs from "../../components/breadcrumbs/Breadcrumbs";
+import { Link } from "../../i18n/router";
+import { useNavigate } from "../../i18n/useNavigate";
 import { shortName } from "../../utils/companyName";
 import "../search/_Search.scss";
 
@@ -16,6 +17,7 @@ const CRUMBS = [
 ];
 
 export default function Companies() {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -66,6 +68,13 @@ export default function Companies() {
     }
   };
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const value = String(new FormData(e.currentTarget).get("q") || "").trim();
+    if (!value) return;
+    navigate(`/search?q=${encodeURIComponent(value)}`);
+  };
+
   if (initialLoading) {
     return (
       <section className="search">
@@ -83,6 +92,18 @@ export default function Companies() {
       <div className="search__inner">
         <Breadcrumbs items={CRUMBS} />
         <h1 className="search__title">Компании</h1>
+
+        <form className="search__form" onSubmit={handleSubmit}>
+          <input
+            className="search__input"
+            type="text"
+            name="q"
+            placeholder="Введите название, БИН или ИИН компании"
+          />
+          <button className="search__button" type="submit">
+            Найти
+          </button>
+        </form>
 
         {error && <p className="search__message">{error}</p>}
 
