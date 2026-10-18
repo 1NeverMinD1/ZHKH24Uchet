@@ -1,15 +1,20 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import client from "../../api/client";
 import SEO from "../../components/seo/SEO";
-import "./_Search.scss";
+import { Link } from "../../i18n/router";
+import { useNavigate } from "../../i18n/useNavigate";
+import { useLocale } from "../../i18n/context";
 import { shortName } from "../../utils/companyName";
+import { pick } from "../../utils/localized";
+import "./_Search.scss";
 
 export default function Search() {
   const navigate = useNavigate();
+  const { locale, t } = useLocale();
   const [params] = useSearchParams();
   const q = (params.get("q") || "").trim();
-  const [result, setResult] = useState({ q: null, items: [], error: "" });
+  const [result, setResult] = useState({ q: null, items: [], failed: false });
 
   useEffect(() => {
     if (!q) return;
@@ -19,11 +24,11 @@ export default function Search() {
       .get("/company-search", { params: { q } })
       .then(({ data }) => {
         if (cancelled) return;
-        setResult({ q, items: data.data, error: "" });
+        setResult({ q, items: data.data, failed: false });
       })
       .catch(() => {
         if (cancelled) return;
-        setResult({ q, items: [], error: "Не удалось выполнить поиск" });
+        setResult({ q, items: [], failed: true });
       });
 
     return () => {
@@ -41,38 +46,43 @@ export default function Search() {
   let content;
 
   if (!q) {
-    content = (
-      <p className="search__message">Введите название или БИН компании</p>
-    );
+    content = <p className="search__message">{t("search.hint")}</p>;
   } else if (result.q !== q) {
-    content = <p className="search__message">Поиск...</p>;
+    content = <p className="search__message">{t("search.loading")}</p>;
   } else {
     content = (
       <>
-        <h1 className="search__title">Результаты по запросу «{q}»</h1>
+        <h1 className="search__title">{t("search.title", { q })}</h1>
 
-        {result.error && <p className="search__message">{result.error}</p>}
+        {result.failed && (
+          <p className="search__message">{t("search.error")}</p>
+        )}
 
-        {!result.error && result.items.length === 0 && (
-          <p className="search__message">Ничего не найдено</p>
+        {!result.failed && result.items.length === 0 && (
+          <p className="search__message">{t("search.empty")}</p>
         )}
 
         <div className="search__list">
-          {result.items.map((item) => (
-            <Link
-              key={item.bin}
-              to={`/company/${item.bin}`}
-              className="search__item"
-            >
-              <div>
-                <p className="search__item-name">{shortName(item.name_ru)}</p>
-                <p className="search__item-meta">
-                  БИН {item.bin}
-                  {item.locality_ru ? ` · ${item.locality_ru}` : ""}
-                </p>
-              </div>
-            </Link>
-          ))}
+          {result.items.map((item) => {
+            const locality = pick(item, "locality", locale);
+            return (
+              <Link
+                key={item.bin}
+                to={`/company/${item.bin}`}
+                className="search__item"
+              >
+                <div>
+                  <p className="search__item-name">
+                    {shortName(pick(item, "name", locale))}
+                  </p>
+                  <p className="search__item-meta">
+                    {t("company.bin")} {item.bin}
+                    {locality ? ` · ${locality}` : ""}
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </>
     );
@@ -80,7 +90,10 @@ export default function Search() {
 
   return (
     <section className="search">
-      <SEO title={q ? `Поиск: ${q}` : "Поиск компаний"} noindex />
+      <SEO
+        title={q ? t("search.seoTitle", { q }) : t("search.seoTitleEmpty")}
+        noindex
+      />
       <div className="search__inner">
         <form className="search__form" onSubmit={handleSubmit}>
           <input
@@ -89,10 +102,10 @@ export default function Search() {
             type="text"
             name="q"
             defaultValue={q}
-            placeholder="Введите название, БИН или ИИН компании"
+            placeholder={t("search.placeholder")}
           />
           <button className="search__button" type="submit">
-            Найти
+            {t("search.button")}
           </button>
         </form>
 

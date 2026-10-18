@@ -18,8 +18,16 @@ export default function LocaleProvider({ locale, children }) {
   }, [locale]);
 
   const value = useMemo(() => {
-    const t = (key) =>
-      translations[locale]?.[key] ?? translations[DEFAULT_LOCALE]?.[key] ?? key;
+    const t = (key, params) => {
+      const text =
+        translations[locale]?.[key] ??
+        translations[DEFAULT_LOCALE]?.[key] ??
+        key;
+      if (!params) return text;
+      return text.replace(/\{(\w+)\}/g, (match, name) =>
+        params[name] === undefined ? match : String(params[name]),
+      );
+    };
 
     const getSwitchPath = (target) =>
       `${localizePath(target, stripLocale(pathname))}${search}${hash}`;

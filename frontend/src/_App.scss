@@ -1,4 +1,13 @@
 .main {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+
+  > :not(header):not(footer) {
+    flex: 1 0 auto;
+  }
+
   .route-fallback {
     min-height: 50vh;
     background: #f4f7fa;

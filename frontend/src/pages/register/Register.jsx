@@ -1,11 +1,15 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
 import client from "../../api/client";
 import SEO from "../../components/seo/SEO";
+import { Link } from "../../i18n/router";
+import { useNavigate } from "../../i18n/useNavigate";
+import { useLocale } from "../../i18n/context";
+import { errorKey } from "../../utils/authErrors";
 import "../auth/_Auth.scss";
 
 export default function Register() {
   const navigate = useNavigate();
+  const { t } = useLocale();
   const [form, setForm] = useState({
     lastName: "",
     firstName: "",
@@ -41,7 +45,7 @@ export default function Register() {
       navigate("/");
     } catch (err) {
       setError(
-        err.response?.data?.error?.message || "Не удалось зарегистрироваться",
+        t(errorKey(err.response?.data?.error?.message, "register.error")),
       );
     } finally {
       setLoading(false);
@@ -50,36 +54,38 @@ export default function Register() {
 
   return (
     <section className="auth">
-      <SEO title="Регистрация" noindex />
+      <SEO title={t("register.seoTitle")} noindex />
       <form className="auth__form" onSubmit={handleSubmit}>
-        <h1 className="auth__title">Регистрация</h1>
+        <h1 className="auth__title">{t("register.title")}</h1>
 
         <label className="auth__label">
-          Фамилия
+          {t("register.lastName")}
           <input
             className="auth__input"
             type="text"
             name="lastName"
             value={form.lastName}
             onChange={handleChange}
+            autoComplete="family-name"
             required
           />
         </label>
 
         <label className="auth__label">
-          Имя
+          {t("register.firstName")}
           <input
             className="auth__input"
             type="text"
             name="firstName"
             value={form.firstName}
             onChange={handleChange}
+            autoComplete="given-name"
             required
           />
         </label>
 
         <label className="auth__label">
-          Номер телефона
+          {t("register.phone")}
           <input
             className="auth__input"
             type="tel"
@@ -87,31 +93,35 @@ export default function Register() {
             placeholder="+7 777 123 45 67"
             value={form.phone}
             onChange={handleChange}
+            autoComplete="tel"
             required
           />
         </label>
 
         <label className="auth__label">
-          Email
+          {t("register.email")}
           <input
             className="auth__input"
             type="email"
             name="email"
             value={form.email}
             onChange={handleChange}
+            autoComplete="email"
             required
           />
         </label>
 
         <label className="auth__label">
-          Пароль
+          {t("register.password")}
           <input
             className="auth__input"
             type="password"
             name="password"
+            placeholder={t("register.passwordHint")}
             value={form.password}
             onChange={handleChange}
             minLength={6}
+            autoComplete="new-password"
             required
           />
         </label>
@@ -119,11 +129,12 @@ export default function Register() {
         {error && <p className="auth__error">{error}</p>}
 
         <button className="auth__button" type="submit" disabled={loading}>
-          {loading ? "Подождите..." : "Зарегистрироваться"}
+          {loading ? t("register.wait") : t("register.submit")}
         </button>
 
         <p className="auth__footer">
-          Уже есть аккаунт? <Link to="/login">Войти</Link>
+          {t("register.haveAccount")}{" "}
+          <Link to="/login">{t("register.toLogin")}</Link>
         </p>
       </form>
     </section>

@@ -1,3 +1,6 @@
+import { dataMessages } from "./messagesData";
+import { authMessages } from "./messagesAuth";
+
 export const translations = {
   ru: {
     "header.menu": "Меню",
@@ -140,3 +143,6 @@ export const translations = {
     "footer.basedOn": "Деректер ҚР ашық тізілімдеріне негізделген",
   },
 };
+
+Object.assign(translations.ru, dataMessages.ru, authMessages.ru);
+Object.assign(translations.kk, dataMessages.kk, authMessages.kk);

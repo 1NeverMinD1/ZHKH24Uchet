@@ -1,18 +1,22 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import client from "../../api/client";
 import SEO from "../../components/seo/SEO";
 import JsonLd from "../../components/seo/JsonLd";
 import Breadcrumbs from "../../components/breadcrumbs/Breadcrumbs";
 import NotFound from "../notfound/NotFound";
+import { Link } from "../../i18n/router";
+import { useLocale } from "../../i18n/context";
+import { localizePath } from "../../i18n/locales";
 import { SITE_URL } from "../../config/site";
 import { shortName } from "../../utils/companyName";
+import { pick } from "../../utils/localized";
 import "./_Company.scss";
 
 const BIN_PATTERN = /^\d{12}$/;
 
 const formatDate = (value) => {
-  if (!value) return "—";
+  if (!value) return "";
   const [year, month, day] = value.split("-");
   return `${day}.${month}.${year}`;
 };
@@ -20,13 +24,13 @@ const formatDate = (value) => {
 const truncate = (text, max = 160) =>
   text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
 
-function Row({ label, value, locked }) {
+function Row({ label, value, locked, lockedText }) {
   return (
     <div className="company__row">
       <dt>{label}</dt>
       <dd>
         {locked ? (
-          <span className="company__locked">Доступно после регистрации</span>
+          <span className="company__locked">{lockedText}</span>
         ) : (
           value || "—"
         )}
@@ -35,42 +39,52 @@ function Row({ label, value, locked }) {
   );
 }
 
-const buildSchema = (company, name, locked) => {
-  const url = `${SITE_URL}/company/${company.bin}`;
-  const address = {
-    "@type": "PostalAddress",
-    addressCountry: "KZ",
-    addressLocality: company.locality_ru || undefined,
-    streetAddress:
-      !locked && company.legal_address ? company.legal_address : undefined,
-  };
-
-  return {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "@id": `${url}#organization`,
-    url,
-    name,
-    legalName: company.name_ru,
-    alternateName: company.name_kk || undefined,
-    identifier: {
-      "@type": "PropertyValue",
-      propertyID: "БИН",
-      value: company.bin,
-    },
-    description: company.oked_name_ru
-      ? `Вид деятельности: ${company.oked_name_ru}`
+const buildSchema = ({
+  company,
+  name,
+  legalName,
+  alternateName,
+  url,
+  locale,
+  activity,
+  locality,
+  locked,
+}) => ({
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": `${url}#organization`,
+  url,
+  name,
+  legalName,
+  alternateName: alternateName || undefined,
+  inLanguage: locale,
+  identifier: {
+    "@type": "PropertyValue",
+    propertyID: locale === "kk" ? "БСН" : "БИН",
+    value: company.bin,
+  },
+  description: activity || undefined,
+  address:
+    locality || !locked
+      ? {
+          "@type": "PostalAddress",
+          addressCountry: "KZ",
+          addressLocality: locality || undefined,
+          streetAddress:
+            !locked && company.legal_address
+              ? company.legal_address
+              : undefined,
+        }
       : undefined,
-    address: company.locality_ru || !locked ? address : undefined,
-    foundingDate:
-      !locked && company.registration_date
-        ? company.registration_date
-        : undefined,
-  };
-};
+  foundingDate:
+    !locked && company.registration_date
+      ? company.registration_date
+      : undefined,
+});
 
 export default function Company() {
   const { bin } = useParams();
+  const { locale, t } = useLocale();
   const validBin = BIN_PATTERN.test(bin);
   const [result, setResult] = useState({
     bin: null,
@@ -103,7 +117,7 @@ export default function Company() {
           bin,
           company: null,
           access: "guest",
-          error: notFound ? "" : "Не удалось загрузить данные",
+          error: notFound ? "" : "company.loadError",
           notFound,
         });
       });
@@ -116,8 +130,8 @@ export default function Company() {
   if (!validBin) {
     return (
       <NotFound
-        title="Компания не найдена"
-        text="БИН состоит из 12 цифр. Проверьте адрес или воспользуйтесь поиском."
+        title={t("company.notFoundTitle")}
+        text={t("company.invalidBin")}
       />
     );
   }
@@ -125,8 +139,8 @@ export default function Company() {
   if (result.bin !== bin) {
     return (
       <section className="company">
-        <SEO title={`Компания ${bin}`} noindex />
-        Загрузка...
+        <SEO title={t("company.loadingTitle", { bin })} noindex />
+        {t("common.loading")}
       </section>
     );
   }
@@ -134,8 +148,8 @@ export default function Company() {
   if (result.notFound) {
     return (
       <NotFound
-        title="Компания не найдена"
-        text={`Компании с БИН ${bin} нет в нашей базе.`}
+        title={t("company.notFoundTitle")}
+        text={t("company.notInBase", { bin })}
       />
     );
   }
@@ -143,109 +157,142 @@ export default function Company() {
   if (result.error) {
     return (
       <section className="company">
-        <SEO title="Ошибка загрузки" noindex />
-        <p className="company__message">{result.error}</p>
+        <SEO title={t("company.errorTitle")} noindex />
+        <p className="company__message">{t(result.error)}</p>
       </section>
     );
   }
 
   const company = result.company;
   const locked = result.access !== "member";
-  const name = shortName(company.name_ru);
-  const oked = company.oked_code
-    ? `${company.oked_code} — ${company.oked_name_ru || ""}`
-    : "";
+  const primary = pick(company, "name", locale);
+  const secondary = locale === "kk" ? company.name_ru : company.name_kk;
+  const title = shortName(primary);
+  const activity = pick(company, "oked_name", locale);
+  const locality = pick(company, "locality", locale);
+  const oked = company.oked_code ? `${company.oked_code} — ${activity}` : "";
+  const lockedText = t("company.locked");
+
   const description = truncate(
     [
-      `${name}, БИН ${company.bin}.`,
-      company.oked_name_ru && `Вид деятельности: ${company.oked_name_ru}.`,
-      company.locality_ru && `Местонахождение: ${company.locality_ru}.`,
+      t("company.seoLead", { name: title, bin: company.bin }),
+      activity && t("company.seoActivity", { value: activity }),
+      locality && t("company.seoLocation", { value: locality }),
     ]
       .filter(Boolean)
       .join(" "),
   );
+
   const crumbs = [
-    { name: "Главная", path: "/" },
-    { name: "Компании", path: "/companies" },
-    { name, path: `/company/${company.bin}` },
+    { name: t("breadcrumbs.home"), path: "/" },
+    { name: t("companies.title"), path: "/companies" },
+    { name: title, path: `/company/${company.bin}` },
   ];
+
+  const schema = buildSchema({
+    company,
+    name: title,
+    legalName: primary,
+    alternateName: secondary,
+    url: `${SITE_URL}${localizePath(locale, `/company/${company.bin}`)}`,
+    locale,
+    activity,
+    locality,
+    locked,
+  });
 
   return (
     <section className="company">
-      <SEO title={`${name} — БИН ${company.bin}`} description={description} />
-      <JsonLd data={buildSchema(company, name, locked)} />
+      <SEO
+        title={t("company.pageTitle", { name: title, bin: company.bin })}
+        description={description}
+      />
+      <JsonLd data={schema} />
       <div className="company__card">
         <Breadcrumbs items={crumbs} />
 
         <div className="company__head">
           <div>
-            <h1 className="company__name">{name}</h1>
-            {name !== company.name_ru && (
-              <p className="company__name-kk">{company.name_ru}</p>
+            <h1 className="company__name">{title}</h1>
+            {title !== primary && <p className="company__name-kk">{primary}</p>}
+            {secondary && secondary !== primary && (
+              <p className="company__name-kk">{secondary}</p>
             )}
-            {company.name_kk && (
-              <p className="company__name-kk">{company.name_kk}</p>
-            )}
-            <p className="company__bin">БИН {company.bin}</p>
+            <p className="company__bin">
+              {t("company.bin")} {company.bin}
+            </p>
           </div>
         </div>
 
         {locked && (
           <div className="company__notice">
-            <p>
-              Часть данных скрыта. Зарегистрируйтесь или войдите, чтобы увидеть
-              руководителя, адрес, дату регистрации и другие сведения.
-            </p>
+            <p>{t("company.noticeText")}</p>
             <div className="company__notice-actions">
               <Link to="/register" className="company__notice-button">
-                Зарегистрироваться
+                {t("company.noticeRegister")}
               </Link>
               <Link to="/login" className="company__notice-link">
-                Войти
+                {t("company.noticeLogin")}
               </Link>
             </div>
           </div>
         )}
 
         <dl className="company__list">
-          <Row label="Вид деятельности (ОКЭД)" value={oked} />
+          <Row label={t("company.oked")} value={oked} lockedText={lockedText} />
           <Row
-            label="Дополнительные ОКЭД"
+            label={t("company.secondaryOked")}
             value={company.secondary_oked}
             locked={locked}
+            lockedText={lockedText}
           />
-          <Row label="Населённый пункт" value={company.locality_ru} />
           <Row
-            label="Юридический адрес"
+            label={t("company.locality")}
+            value={locality}
+            lockedText={lockedText}
+          />
+          <Row
+            label={t("company.address")}
             value={company.legal_address}
             locked={locked}
+            lockedText={lockedText}
           />
           <Row
-            label="Руководитель"
+            label={t("company.director")}
             value={company.director_name}
             locked={locked}
+            lockedText={lockedText}
           />
           <Row
-            label="Дата регистрации"
+            label={t("company.registered")}
             value={formatDate(company.registration_date)}
             locked={locked}
+            lockedText={lockedText}
           />
           <Row
-            label="Размер предприятия"
-            value={company.krp_name_ru}
+            label={t("company.size")}
+            value={pick(company, "krp_name", locale)}
             locked={locked}
+            lockedText={lockedText}
           />
           <Row
-            label="Сектор экономики"
-            value={company.kse_name_ru}
+            label={t("company.sector")}
+            value={pick(company, "kse_name", locale)}
             locked={locked}
+            lockedText={lockedText}
           />
           <Row
-            label="Форма собственности"
-            value={company.kfs_name_ru}
+            label={t("company.ownership")}
+            value={pick(company, "kfs_name", locale)}
             locked={locked}
+            lockedText={lockedText}
           />
-          <Row label="КАТО" value={company.kato} locked={locked} />
+          <Row
+            label={t("company.kato")}
+            value={company.kato}
+            locked={locked}
+            lockedText={lockedText}
+          />
         </dl>
       </div>
     </section>

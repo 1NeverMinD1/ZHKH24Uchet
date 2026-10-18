@@ -4,10 +4,13 @@ const client = axios.create({
   baseURL: "http://localhost:1337/api",
 });
 
+const AUTH_PREFIXES = ["/user", "/company-card", "/auth/change-password"];
+
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
-  const needsAuth =
-    config.url.startsWith("/user") || config.url.startsWith("/company-card");
+  const needsAuth = AUTH_PREFIXES.some((prefix) =>
+    config.url.startsWith(prefix),
+  );
   if (token && needsAuth) {
     config.headers.Authorization = `Bearer ${token}`;
   }

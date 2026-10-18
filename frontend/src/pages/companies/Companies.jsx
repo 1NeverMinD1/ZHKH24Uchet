@@ -4,26 +4,20 @@ import SEO from "../../components/seo/SEO";
 import Breadcrumbs from "../../components/breadcrumbs/Breadcrumbs";
 import { Link } from "../../i18n/router";
 import { useNavigate } from "../../i18n/useNavigate";
+import { useLocale } from "../../i18n/context";
 import { shortName } from "../../utils/companyName";
+import { pick } from "../../utils/localized";
 import "../search/_Search.scss";
-
-const SEO_TITLE = "Каталог компаний Казахстана";
-const SEO_DESCRIPTION =
-  "Каталог юридических лиц Казахстана: БИН, наименование, вид деятельности и местонахождение по данным открытых реестров.";
-
-const CRUMBS = [
-  { name: "Главная", path: "/" },
-  { name: "Компании", path: "/companies" },
-];
 
 export default function Companies() {
   const navigate = useNavigate();
+  const { locale, t } = useLocale();
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [initialLoading, setInitialLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState("");
+  const [errorKey, setErrorKey] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -37,7 +31,7 @@ export default function Companies() {
       })
       .catch(() => {
         if (cancelled) return;
-        setError("Не удалось загрузить список компаний");
+        setErrorKey("companies.loadError");
       })
       .finally(() => {
         if (cancelled) return;
@@ -52,7 +46,7 @@ export default function Companies() {
   const handleLoadMore = async () => {
     const next = page + 1;
     setLoadingMore(true);
-    setError("");
+    setErrorKey("");
 
     try {
       const { data } = await client.get("/company-list", {
@@ -62,7 +56,7 @@ export default function Companies() {
       setTotal(data.meta.total);
       setPage(next);
     } catch {
-      setError("Не удалось загрузить ещё");
+      setErrorKey("companies.moreError");
     } finally {
       setLoadingMore(false);
     }
@@ -75,58 +69,75 @@ export default function Companies() {
     navigate(`/search?q=${encodeURIComponent(value)}`);
   };
 
+  const seo = (
+    <SEO
+      title={t("companies.seoTitle")}
+      description={t("companies.seoDescription")}
+    />
+  );
+
   if (initialLoading) {
     return (
       <section className="search">
-        <SEO title={SEO_TITLE} description={SEO_DESCRIPTION} />
+        {seo}
         <div className="search__inner">
-          <p className="search__message">Загрузка...</p>
+          <p className="search__message">{t("common.loading")}</p>
         </div>
       </section>
     );
   }
 
+  const crumbs = [
+    { name: t("breadcrumbs.home"), path: "/" },
+    { name: t("companies.title"), path: "/companies" },
+  ];
+
   return (
     <section className="search">
-      <SEO title={SEO_TITLE} description={SEO_DESCRIPTION} />
+      {seo}
       <div className="search__inner">
-        <Breadcrumbs items={CRUMBS} />
-        <h1 className="search__title">Компании</h1>
+        <Breadcrumbs items={crumbs} />
+        <h1 className="search__title">{t("companies.title")}</h1>
 
         <form className="search__form" onSubmit={handleSubmit}>
           <input
             className="search__input"
             type="text"
             name="q"
-            placeholder="Введите название, БИН или ИИН компании"
+            placeholder={t("search.placeholder")}
           />
           <button className="search__button" type="submit">
-            Найти
+            {t("search.button")}
           </button>
         </form>
 
-        {error && <p className="search__message">{error}</p>}
+        {errorKey && <p className="search__message">{t(errorKey)}</p>}
 
-        {!error && items.length === 0 && (
-          <p className="search__message">Пока нет ни одной компании</p>
+        {!errorKey && items.length === 0 && (
+          <p className="search__message">{t("companies.empty")}</p>
         )}
 
         <div className="search__list">
-          {items.map((item) => (
-            <Link
-              key={item.bin}
-              to={`/company/${item.bin}`}
-              className="search__item"
-            >
-              <div>
-                <p className="search__item-name">{shortName(item.name_ru)}</p>
-                <p className="search__item-meta">
-                  БИН {item.bin}
-                  {item.locality_ru ? ` · ${item.locality_ru}` : ""}
-                </p>
-              </div>
-            </Link>
-          ))}
+          {items.map((item) => {
+            const locality = pick(item, "locality", locale);
+            return (
+              <Link
+                key={item.bin}
+                to={`/company/${item.bin}`}
+                className="search__item"
+              >
+                <div>
+                  <p className="search__item-name">
+                    {shortName(pick(item, "name", locale))}
+                  </p>
+                  <p className="search__item-meta">
+                    {t("company.bin")} {item.bin}
+                    {locality ? ` · ${locality}` : ""}
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
         </div>
 
         {items.length < total && (
@@ -135,7 +146,7 @@ export default function Companies() {
             onClick={handleLoadMore}
             disabled={loadingMore}
           >
-            {loadingMore ? "Загрузка..." : "Показать ещё"}
+            {loadingMore ? t("common.loading") : t("companies.more")}
           </button>
         )}
       </div>
