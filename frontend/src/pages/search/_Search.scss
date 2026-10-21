@@ -55,6 +55,36 @@
     color: #2b4c7e;
   }
 
+  &__people {
+    margin-bottom: 36px;
+  }
+
+  &__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin-bottom: 14px;
+
+    .search__subtitle {
+      margin: 0;
+    }
+  }
+
+  &__subtitle {
+    margin: 0 0 14px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #2b4c7e;
+  }
+
+  &__count {
+    margin: 0;
+    font-size: 14px;
+    color: #5b6472;
+  }
+
   &__message {
     font-size: 16px;
     color: #5b6472;

@@ -81,7 +81,22 @@ export default factories.createCoreController(
         return ctx.badRequest("Пустой запрос");
       }
 
-      const filters: any = /^\d+$/.test(q)
+      const page = Math.max(
+        parseInt(String(ctx.query.page || "1"), 10) || 1,
+        1,
+      );
+
+      const district = String(ctx.query.district || "")
+        .replace(/\D/g, "")
+        .slice(0, 4);
+      const region = String(ctx.query.region || "")
+        .replace(/\D/g, "")
+        .slice(0, 2);
+      const prefix =
+        district.length === 4 ? district : region.length === 2 ? region : "";
+
+      const byBin = /^\d+$/.test(q);
+      const textFilter: any = byBin
         ? { bin: { $contains: q } }
         : {
             $or: [
@@ -90,13 +105,22 @@ export default factories.createCoreController(
             ],
           };
 
-      const items = await strapi.documents("api::company.company").findMany({
-        filters,
-        fields: PUBLIC_FIELDS,
-        limit: 20,
-      });
+      const filters: any = prefix
+        ? { $and: [textFilter, { kato: { $startsWith: prefix } }] }
+        : textFilter;
 
-      ctx.body = { data: items };
+      const [items, total] = await Promise.all([
+        strapi.documents("api::company.company").findMany({
+          filters,
+          fields: PUBLIC_FIELDS,
+          sort: byBin ? "bin:asc" : "name_ru:asc",
+          start: (page - 1) * PAGE_SIZE,
+          limit: PAGE_SIZE,
+        }),
+        strapi.documents("api::company.company").count({ filters }),
+      ]);
+
+      ctx.body = { data: items, meta: { page, pageSize: PAGE_SIZE, total } };
     },
     async list(ctx: any) {
       const page = Math.max(
@@ -104,19 +128,29 @@ export default factories.createCoreController(
         1,
       );
 
+      const district = String(ctx.query.district || "")
+        .replace(/\D/g, "")
+        .slice(0, 4);
+      const region = String(ctx.query.region || "")
+        .replace(/\D/g, "")
+        .slice(0, 2);
+      const prefix =
+        district.length === 4 ? district : region.length === 2 ? region : "";
+      const filters: any = prefix ? { kato: { $startsWith: prefix } } : {};
+
       const [items, total] = await Promise.all([
         strapi.documents("api::company.company").findMany({
+          filters,
           fields: PUBLIC_FIELDS,
           sort: "name_ru:asc",
           start: (page - 1) * PAGE_SIZE,
           limit: PAGE_SIZE,
         }),
-        strapi.documents("api::company.company").count({}),
+        strapi.documents("api::company.company").count({ filters }),
       ]);
 
       ctx.body = { data: items, meta: { page, pageSize: PAGE_SIZE, total } };
     },
-
     async card(ctx: any) {
       const bin = String(ctx.params.bin || "").trim();
       const isMember = !RESTRICT_GUESTS || Boolean(ctx.state.user);

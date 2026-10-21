@@ -1,5 +1,7 @@
 import { dataMessages } from "./messagesData";
 import { authMessages } from "./messagesAuth";
+import { directorMessages } from "./messagesDirector";
+import { historyMessages } from "./messagesHistory";
 
 export const translations = {
   ru: {
@@ -144,5 +146,17 @@ export const translations = {
   },
 };
 
-Object.assign(translations.ru, dataMessages.ru, authMessages.ru);
-Object.assign(translations.kk, dataMessages.kk, authMessages.kk);
+Object.assign(
+  translations.ru,
+  dataMessages.ru,
+  authMessages.ru,
+  historyMessages.ru,
+  directorMessages.ru,
+);
+Object.assign(
+  translations.kk,
+  dataMessages.kk,
+  authMessages.kk,
+  historyMessages.kk,
+  directorMessages.kk,
+);

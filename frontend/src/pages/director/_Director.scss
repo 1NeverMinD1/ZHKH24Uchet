@@ -1,0 +1,30 @@
+.director {
+  &__warning {
+    margin: -12px 0 24px;
+    padding: 10px 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #8a5a12;
+    background: #fbf1de;
+    border-radius: 8px;
+  }
+
+  &__list {
+    margin-top: 16px;
+  }
+
+  &__status {
+    flex-shrink: 0;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #5b6472;
+    background: #eef1f5;
+    border-radius: 999px;
+
+    &--current {
+      color: #1f6b43;
+      background: #e8f5ee;
+    }
+  }
+}

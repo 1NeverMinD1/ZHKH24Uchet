@@ -11,6 +11,7 @@ import { localizePath } from "../../i18n/locales";
 import { SITE_URL } from "../../config/site";
 import { shortName } from "../../utils/companyName";
 import { pick } from "../../utils/localized";
+import CompanyHistory from "../../components/history/CompanyHistory";
 import "./_Company.scss";
 
 const BIN_PATTERN = /^\d{12}$/;
@@ -294,6 +295,8 @@ export default function Company() {
             lockedText={lockedText}
           />
         </dl>
+
+        <CompanyHistory bin={company.bin} locked={locked} />
       </div>
     </section>
   );

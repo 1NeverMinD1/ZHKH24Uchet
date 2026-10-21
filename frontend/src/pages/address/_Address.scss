@@ -1,0 +1,123 @@
+.address {
+  &__eyebrow {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #8a93a0;
+  }
+
+  &__place {
+    margin: -12px 0 24px;
+    font-size: 15px;
+    color: #5b6472;
+  }
+
+  &__card {
+    margin-bottom: 24px;
+    padding: 24px;
+    background: #ffffff;
+    border: 1px solid #dce3ea;
+    border-radius: 12px;
+  }
+
+  &__subtitle {
+    font-size: 18px;
+    color: #2b4c7e;
+  }
+
+  &__delta {
+    margin-top: 14px;
+    font-size: 14px;
+    color: #5b6472;
+  }
+
+  &__diff {
+    margin-left: 10px;
+    padding: 2px 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #5b6472;
+    background: #eef1f5;
+    border-radius: 999px;
+
+    &--up {
+      color: #8a5a12;
+      background: #fbf1de;
+    }
+
+    &--down {
+      color: #1f6b43;
+      background: #e8f5ee;
+    }
+  }
+
+  &__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  &__select {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 180px;
+    font-size: 13px;
+    color: #5b6472;
+
+    select {
+      padding: 10px 12px;
+      font-family: inherit;
+      font-size: 14px;
+      color: #1c1c1c;
+      background: #ffffff;
+      border: 1px solid #dce3ea;
+      border-radius: 6px;
+
+      &:focus {
+        outline: none;
+        border-color: #3a6ea5;
+      }
+    }
+  }
+
+  &__count {
+    margin: 14px 0 16px;
+    font-size: 14px;
+    color: #5b6472;
+  }
+}
+
+.chart {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  margin-top: 12px;
+
+  &__axis {
+    stroke: #dce3ea;
+    stroke-width: 1;
+  }
+
+  &__bar {
+    fill: #3a6ea5;
+
+    &--test {
+      fill: #a9bfd8;
+    }
+  }
+
+  &__value {
+    font-size: 14px;
+    font-weight: 700;
+    fill: #1c1c1c;
+  }
+
+  &__label {
+    font-size: 12px;
+    fill: #5b6472;
+  }
+}
