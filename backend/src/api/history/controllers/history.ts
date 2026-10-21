@@ -199,14 +199,32 @@ export default {
     const prefix =
       district.length === 4 ? district : region.length === 2 ? region : "";
 
+    const q = String(ctx.query.q || "")
+      .trim()
+      .slice(0, 200);
+
     await ensureDiff(base.id, end.id);
 
     const bindings: any[] = [base.id, end.id];
+
     let territoryFilter = "";
     if (prefix) {
       territoryFilter = "AND d.kato LIKE ?";
       bindings.push(`${prefix}%`);
     }
+
+    let textFilter = "";
+    if (q) {
+      const pattern = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
+      if (/^\d+$/.test(q)) {
+        textFilter = "AND d.bin LIKE ?";
+        bindings.push(pattern);
+      } else {
+        textFilter = "AND (d.name_ru ILIKE ? OR d.name_kk ILIKE ?)";
+        bindings.push(pattern, pattern);
+      }
+    }
+
     bindings.push(PAGE_SIZE, (page - 1) * PAGE_SIZE);
 
     const list = await rows(
@@ -216,6 +234,7 @@ export default {
           WHERE d.base_id = ? AND d.end_id = ?
             AND (${conditions.join(" OR ")})
             ${territoryFilter}
+            ${textFilter}
           ORDER BY d.name_ru NULLS LAST, d.bin
           LIMIT ? OFFSET ?
        )

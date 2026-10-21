@@ -7,40 +7,79 @@ import { useNavigate } from "../../i18n/useNavigate";
 import { useLocale } from "../../i18n/context";
 import { shortName } from "../../utils/companyName";
 import { pick } from "../../utils/localized";
+import { formatDate } from "../../utils/dates";
 import "./_Search.scss";
 import "../companies/_Companies.scss";
+
+const KINDS = ["director", "address"];
+
+const compact = (object) =>
+  Object.fromEntries(
+    Object.entries(object).filter(
+      ([, value]) => value !== "" && value !== undefined && value !== null,
+    ),
+  );
 
 export default function Search() {
   const navigate = useNavigate();
   const { locale, t } = useLocale();
   const [params, setParams] = useSearchParams();
+
   const q = (params.get("q") || "").trim();
+  const changedKey = (params.get("changed") || "")
+    .split(",")
+    .filter((kind) => KINDS.includes(kind))
+    .join(",");
+  const from = params.get("from") || "";
+  const to = params.get("to") || "";
   const region = params.get("region") || "";
   const district = params.get("district") || "";
-  const key = JSON.stringify({ q, region, district });
+  const historyMode = changedKey !== "";
+  const key = JSON.stringify({ q, changedKey, from, to, region, district });
 
   const [result, setResult] = useState({
     key: null,
     items: [],
     total: 0,
+    meta: null,
     page: 1,
     failed: false,
   });
   const [people, setPeople] = useState({ q: null, items: [] });
+  const [snapshots, setSnapshots] = useState([]);
   const [regions, setRegions] = useState([]);
   const [districts, setDistricts] = useState({ region: "", list: [] });
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreFailed, setMoreFailed] = useState(false);
 
-  const requestParams = (page) => {
-    const result = { q, page };
-    if (region) result.region = region;
-    if (district) result.district = district;
-    return result;
-  };
+  const requestFor = (page) =>
+    historyMode
+      ? {
+          url: "/history/changes",
+          params: compact({
+            q,
+            changed: changedKey,
+            from,
+            to,
+            region,
+            district,
+            page,
+          }),
+        }
+      : {
+          url: "/company-search",
+          params: compact({ q, region, district, page }),
+        };
 
   useEffect(() => {
     let cancelled = false;
+
+    client
+      .get("/history/snapshots")
+      .then(({ data }) => {
+        if (!cancelled) setSnapshots(data.data);
+      })
+      .catch(() => {});
 
     client
       .get("/history/territories")
@@ -74,15 +113,17 @@ export default function Search() {
     if (!q) return;
     let cancelled = false;
     const requestKey = key;
+    const request = requestFor(1);
 
     client
-      .get("/company-search", { params: requestParams(1) })
+      .get(request.url, { params: request.params })
       .then(({ data }) => {
         if (cancelled) return;
         setResult({
           key: requestKey,
           items: data.data,
           total: data.meta.total,
+          meta: data.meta,
           page: 1,
           failed: false,
         });
@@ -94,6 +135,7 @@ export default function Search() {
           key: requestKey,
           items: [],
           total: 0,
+          meta: null,
           page: 1,
           failed: true,
         });
@@ -134,15 +176,29 @@ export default function Search() {
     setParams(next, { replace: true });
   };
 
+  const toggleKind = (kind) => {
+    const selected = new Set(changedKey ? changedKey.split(",") : []);
+    if (selected.has(kind)) {
+      selected.delete(kind);
+    } else {
+      selected.add(kind);
+    }
+    update({ changed: KINDS.filter((item) => selected.has(item)).join(",") });
+  };
+
+  const resetFilters = () =>
+    update({ changed: "", from: "", to: "", region: "", district: "" });
+
   const handleLoadMore = async () => {
     const requestKey = key;
     const page = result.page + 1;
+    const request = requestFor(page);
     setLoadingMore(true);
     setMoreFailed(false);
 
     try {
-      const { data } = await client.get("/company-search", {
-        params: requestParams(page),
+      const { data } = await client.get(request.url, {
+        params: request.params,
       });
       setResult((previous) =>
         previous.key === requestKey
@@ -165,19 +221,86 @@ export default function Search() {
     e.preventDefault();
     const value = String(new FormData(e.currentTarget).get("q") || "").trim();
     if (!value) return;
-    const next = new URLSearchParams();
+    const next = new URLSearchParams(params);
     next.set("q", value);
-    if (region) next.set("region", region);
-    if (district) next.set("district", district);
     navigate(`/search?${next.toString()}`);
   };
 
   const directors = people.q === q ? people.items : [];
   const districtList = districts.region === region ? districts.list : [];
+  const lastSnapshot = snapshots[snapshots.length - 1];
+  const defaultTo = lastSnapshot ? lastSnapshot.takenOn : "";
+  const defaultFrom =
+    snapshots.length > 1 ? snapshots[snapshots.length - 2].takenOn : defaultTo;
+  const hasFilters = historyMode || region !== "";
+
+  const nameOf = (item) =>
+    shortName(
+      (locale === "kk"
+        ? item.nameKk || item.nameRu
+        : item.nameRu || item.nameKk) || "",
+    ) || item.bin;
+
+  const addressOf = (address) => {
+    if (!address) return t("history.nobody");
+    const place = locale === "kk" ? address.placeKk : address.place;
+    return [address.text, place].filter(Boolean).join(", ");
+  };
 
   const filters = (
     <div className="filters">
       <div className="filters__row">
+        <label className="filters__check">
+          <input
+            type="checkbox"
+            checked={changedKey.split(",").includes("director")}
+            onChange={() => toggleKind("director")}
+          />
+          {t("history.directorChanged")}
+        </label>
+        <label className="filters__check">
+          <input
+            type="checkbox"
+            checked={changedKey.split(",").includes("address")}
+            onChange={() => toggleKind("address")}
+          />
+          {t("history.addressChanged")}
+        </label>
+      </div>
+
+      <div className="filters__row">
+        <label className="filters__field">
+          {t("history.from")}
+          <select
+            className="filters__select"
+            value={from || defaultFrom}
+            disabled={!historyMode || snapshots.length < 2}
+            onChange={(e) => update({ from: e.target.value })}
+          >
+            {snapshots.map((snapshot) => (
+              <option key={snapshot.id} value={snapshot.takenOn}>
+                {formatDate(snapshot.takenOn)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="filters__field">
+          {t("history.to")}
+          <select
+            className="filters__select"
+            value={to || defaultTo}
+            disabled={!historyMode || snapshots.length < 2}
+            onChange={(e) => update({ to: e.target.value })}
+          >
+            {snapshots.map((snapshot) => (
+              <option key={snapshot.id} value={snapshot.takenOn}>
+                {formatDate(snapshot.takenOn)}
+              </option>
+            ))}
+          </select>
+        </label>
+
         <label className="filters__field">
           {t("history.region")}
           <select
@@ -211,16 +334,27 @@ export default function Search() {
           </select>
         </label>
 
-        {region && (
+        {hasFilters && (
           <button
             className="filters__reset"
             type="button"
-            onClick={() => update({ region: "", district: "" })}
+            onClick={resetFilters}
           >
             {t("history.reset")}
           </button>
         )}
       </div>
+
+      {historyMode && result.key === key && result.meta?.base && (
+        <div className="filters__summary">
+          <p>
+            {t("history.compare", {
+              from: formatDate(result.meta.base.takenOn),
+              to: formatDate(result.meta.end?.takenOn),
+            })}
+          </p>
+        </div>
+      )}
     </div>
   );
 
@@ -231,6 +365,7 @@ export default function Search() {
   } else if (result.key !== key) {
     content = (
       <>
+        <h1 className="search__title">{t("search.title", { q })}</h1>
         {filters}
         <p className="search__message">{t("search.loading")}</p>
       </>
@@ -267,13 +402,17 @@ export default function Search() {
         )}
 
         {result.failed && (
-          <p className="search__message">{t("search.error")}</p>
+          <p className="search__message">
+            {historyMode ? t("history.loadError") : t("search.error")}
+          </p>
         )}
 
         {!result.failed &&
           result.items.length === 0 &&
-          directors.length === 0 && (
-            <p className="search__message">{t("search.empty")}</p>
+          (historyMode || directors.length === 0) && (
+            <p className="search__message">
+              {historyMode ? t("history.empty") : t("search.empty")}
+            </p>
           )}
 
         {!result.failed && result.total > 0 && (
@@ -288,26 +427,63 @@ export default function Search() {
         )}
 
         <div className="search__list">
-          {result.items.map((item) => {
-            const locality = pick(item, "locality", locale);
-            return (
+          {historyMode &&
+            result.items.map((item) => (
               <Link
                 key={item.bin}
                 to={`/company/${item.bin}`}
-                className="search__item"
+                className="change"
               >
-                <div>
-                  <p className="search__item-name">
-                    {shortName(pick(item, "name", locale))}
+                <p className="change__name">{nameOf(item)}</p>
+                <p className="change__meta">
+                  {t("company.bin")} {item.bin}
+                </p>
+
+                {item.changes.includes("director") && (
+                  <p className="change__line">
+                    <span className="change__tag">{t("history.director")}</span>
+                    <span className="change__was">
+                      {item.director.from?.name || t("history.nobody")}
+                    </span>
+                    <span className="change__arrow">→</span>
+                    <span>{item.director.to?.name || t("history.nobody")}</span>
                   </p>
-                  <p className="search__item-meta">
-                    {t("company.bin")} {item.bin}
-                    {locality ? ` · ${locality}` : ""}
+                )}
+
+                {item.changes.includes("address") && (
+                  <p className="change__line">
+                    <span className="change__tag">{t("history.address")}</span>
+                    <span className="change__was">
+                      {addressOf(item.address.from)}
+                    </span>
+                    <span className="change__arrow">→</span>
+                    <span>{addressOf(item.address.to)}</span>
                   </p>
-                </div>
+                )}
               </Link>
-            );
-          })}
+            ))}
+
+          {!historyMode &&
+            result.items.map((item) => {
+              const locality = pick(item, "locality", locale);
+              return (
+                <Link
+                  key={item.bin}
+                  to={`/company/${item.bin}`}
+                  className="search__item"
+                >
+                  <div>
+                    <p className="search__item-name">
+                      {shortName(pick(item, "name", locale))}
+                    </p>
+                    <p className="search__item-meta">
+                      {t("company.bin")} {item.bin}
+                      {locality ? ` · ${locality}` : ""}
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
         </div>
 
         {moreFailed && (

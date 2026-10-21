@@ -31,6 +31,8 @@ const DATA_COLUMNS = [
   "director_name",
 ];
 
+const UPDATE_COLUMNS = DATA_COLUMNS.filter((c) => c !== "bin");
+
 const SYSTEM_COLUMNS = ["id", "document_id", "created_at", "updated_at"];
 
 if (!filePath) {
@@ -100,6 +102,11 @@ const toRecord = (cells) => {
   };
 };
 
+const sourceValue = (column) =>
+  column === "registration_date"
+    ? `NULLIF(s.${column}, '')::date`
+    : `NULLIF(s.${column}, '')`;
+
 const client = new pg.Client({
   host: process.env.DATABASE_HOST || "127.0.0.1",
   port: Number(process.env.DATABASE_PORT) || 5432,
@@ -110,7 +117,10 @@ const client = new pg.Client({
 
 const started = Date.now();
 const seconds = () => Math.round((Date.now() - started) / 1000);
+const log = (message) => console.log(`[${seconds()} с] ${message}`);
 
+log(`Файл: ${filePath}`);
+log("Подключение к базе...");
 await client.connect();
 
 const { rows: columnRows } = await client.query(
@@ -121,7 +131,7 @@ const { rows: columnRows } = await client.query(
 
 if (columnRows.length === 0) {
   console.error(
-    "Таблица companies не найдена. Сначала запусти Strapi, он создаст таблицы.",
+    "Таблица companies не найдена. Сначала нужно запустить Strapi, он создаст таблицы.",
   );
   process.exit(1);
 }
@@ -145,7 +155,7 @@ if (metaColumns.length > 0) {
   const { rows } = await client.query("SELECT 1 FROM companies LIMIT 1");
   if (rows.length === 0) {
     console.error(
-      "В таблице нет ни одной записи-шаблона. Создай в админке Strapi компанию с БИН 000000000000 и сохрани её.",
+      "В таблице нет ни одной записи-шаблона. Нужно создать в админке Strapi компанию с БИН 000000000000 и сохранить её.",
     );
     process.exit(1);
   }
@@ -154,6 +164,7 @@ if (metaColumns.length > 0) {
 const before = Number(
   (await client.query("SELECT count(*) FROM companies")).rows[0].count,
 );
+log(`Подключено. Компаний в базе: ${before}. Чтение файла...`);
 
 await client.query("DROP TABLE IF EXISTS company_import");
 await client.query(
@@ -183,7 +194,12 @@ const reader = new ExcelJS.stream.xlsx.WorkbookReader(filePath, {
   hyperlinks: "ignore",
 });
 
+let sheetNumber = 0;
+
 outer: for await (const sheet of reader) {
+  sheetNumber += 1;
+  log(`Лист ${sheetNumber}: начало.`);
+
   for await (const row of sheet) {
     stats.rows += 1;
     const record = toRecord(row.values);
@@ -207,7 +223,7 @@ outer: for await (const sheet of reader) {
     if (batch.length >= BATCH) {
       await flush();
       if (stats.valid % 50000 === 0) {
-        console.log(`Прочитано ${stats.valid} компаний, ${seconds()} с`);
+        log(`Прочитано ${stats.valid} компаний.`);
       }
     }
 
@@ -216,8 +232,23 @@ outer: for await (const sheet of reader) {
 }
 
 await flush();
-console.log(
-  `Файл прочитан: ${stats.valid} компаний, ${seconds()} с. Переношу в companies...`,
+log(`Файл прочитан: ${stats.valid} компаний. Обновление companies...`);
+
+const sourceSql =
+  "(SELECT DISTINCT ON (bin) * FROM company_import ORDER BY bin) s";
+
+await client.query("BEGIN");
+
+const updated = await client.query(
+  `UPDATE companies c
+      SET ${UPDATE_COLUMNS.map((col) => `${col} = ${sourceValue(col)}`).join(",\n          ")},
+          updated_at = now()
+     FROM ${sourceSql}
+    WHERE c.bin = s.bin
+      AND (${UPDATE_COLUMNS.map((col) => `c.${col} IS DISTINCT FROM ${sourceValue(col)}`).join("\n           OR ")})`,
+);
+log(
+  `Обновлено изменившихся компаний: ${updated.rowCount}. Добавление новых...`,
 );
 
 const insertColumns = [
@@ -230,11 +261,7 @@ const insertColumns = [
 
 const selectColumns = [
   `'z' || substr(md5('company-' || s.bin), 1, 23)`,
-  ...DATA_COLUMNS.map((c) =>
-    c === "registration_date"
-      ? `NULLIF(s.${c}, '')::date`
-      : `NULLIF(s.${c}, '')`,
-  ),
+  ...DATA_COLUMNS.map((c) => sourceValue(c)),
   "now()",
   "now()",
   ...metaColumns.map((c) => `t.${c}`),
@@ -248,12 +275,14 @@ const templateJoin =
 const inserted = await client.query(
   `INSERT INTO companies (${insertColumns.join(", ")})
    SELECT ${selectColumns.join(", ")}
-     FROM (SELECT DISTINCT ON (bin) * FROM company_import ORDER BY bin) s
+     FROM ${sourceSql}
      ${templateJoin}
     WHERE NOT EXISTS (SELECT 1 FROM companies c WHERE c.bin = s.bin)`,
 );
 
 await client.query("DELETE FROM companies WHERE bin = $1", [TEMPLATE_BIN]);
+await client.query("COMMIT");
+
 await client.query("DROP TABLE company_import");
 await client.query("ANALYZE companies");
 
@@ -261,10 +290,10 @@ const after = Number(
   (await client.query("SELECT count(*) FROM companies")).rows[0].count,
 );
 
-console.log(
-  `Готово за ${seconds()} с. Добавлено: ${inserted.rowCount}, было в базе: ${before}, стало: ${after}.`,
+log(
+  `Готово. Добавлено: ${inserted.rowCount}, обновлено: ${updated.rowCount}, было в базе: ${before}, стало: ${after}.`,
 );
-console.log(
+log(
   `Строк в файле: ${stats.rows}, пропущено (нет БИН или названия): ${stats.skipped}, обрезано длинных значений: ${stats.truncated}.`,
 );
 

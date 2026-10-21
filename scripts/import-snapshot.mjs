@@ -9,6 +9,9 @@ const args = process.argv.slice(2);
 const REPLACE = args.includes("--replace");
 const [filePath, takenOn] = args.filter((arg) => !arg.startsWith("--"));
 const BATCH = 5000;
+const PROGRESS_EVERY = 20000;
+const DEBUG_SHEET = Number(process.env.DEBUG_SHEET || 0);
+const DEBUG_FROM = Number(process.env.DEBUG_FROM || 0);
 
 if (!filePath || !/^\d{4}-\d{2}-\d{2}$/.test(takenOn || "")) {
   console.error(
@@ -142,6 +145,7 @@ const client = new pg.Client({
 
 const started = Date.now();
 const seconds = () => Math.round((Date.now() - started) / 1000);
+const log = (message) => console.log(`[${seconds()} с] ${message}`);
 
 const upsertLevel = async (level, parentLevel, items) => {
   const list = [...items.values()];
@@ -172,13 +176,18 @@ const upsertLevel = async (level, parentLevel, items) => {
   return list.length;
 };
 
+log(`Файл: ${filePath}, дата среза: ${takenOn}`);
+log("Подключение к базе...");
 await client.connect();
+log("Подключено. Проверка схемы...");
+
 await client.query(
   readFileSync(
     fileURLToPath(new URL("./history-schema.sql", import.meta.url)),
     "utf8",
   ),
 );
+log("Схема готова.");
 
 const found = await client.query(
   "SELECT id FROM snapshots WHERE taken_on = $1",
@@ -187,17 +196,20 @@ const found = await client.query(
 if (found.rows.length > 0) {
   if (!REPLACE) {
     console.error(
-      `Срез на ${takenOn} уже загружен. Для перезаписи добавь --replace.`,
+      `Срез на ${takenOn} уже загружен. Для перезаписи нужен флаг --replace.`,
     );
     process.exit(1);
   }
+  log(`Удаление существующего среза на ${takenOn}...`);
   await client.query("DELETE FROM snapshots WHERE id = $1", [found.rows[0].id]);
+  log("Существующий срез удалён.");
 }
 
 await client.query("DROP TABLE IF EXISTS hx_import");
 await client.query(
   `CREATE UNLOGGED TABLE hx_import (${COLUMNS.map((c) => `${c} text`).join(", ")})`,
 );
+log("Временная таблица создана. Чтение файла...");
 
 const insertSql =
   `INSERT INTO hx_import (${COLUMNS.join(", ")}) ` +
@@ -223,8 +235,26 @@ const reader = new ExcelJS.stream.xlsx.WorkbookReader(filePath, {
   hyperlinks: "ignore",
 });
 
+let sheetNumber = 0;
+
 for await (const sheet of reader) {
+  sheetNumber += 1;
+  let sheetRows = 0;
+  log(`Лист ${sheetNumber}: начало.`);
+
   for await (const row of sheet) {
+    sheetRows += 1;
+    if (sheetRows % PROGRESS_EVERY === 0) {
+      log(`Лист ${sheetNumber}: ${sheetRows} строк, всего компаний ${valid}.`);
+    }
+
+    if (sheetNumber === DEBUG_SHEET && sheetRows >= DEBUG_FROM) {
+      const rawAddress = clean(row.values[21]);
+      console.log(
+        `[отладка] лист ${sheetNumber}, строка ${sheetRows}, БИН ${clean(row.values[1])}, длина адреса ${rawAddress.length}: ${rawAddress.slice(0, 150)}`,
+      );
+    }
+
     const record = toRow(row.values);
     if (!record) {
       skipped += 1;
@@ -234,9 +264,11 @@ for await (const sheet of reader) {
     valid += 1;
     if (batch.length >= BATCH) await flush();
   }
+
+  log(`Лист ${sheetNumber}: готов, ${sheetRows} строк.`);
 }
 await flush();
-console.log(`Файл прочитан: ${valid} компаний, ${seconds()} с. Строю срез...`);
+log(`Файл прочитан: ${valid} компаний. Построение среза...`);
 
 try {
   await client.query("BEGIN");
@@ -251,6 +283,7 @@ try {
   await upsertLevel(1, 0, regions);
   await upsertLevel(2, 1, districts);
   await upsertLevel(3, 2, localities);
+  log("Территории обновлены. Добавление руководителей...");
 
   const newDirectors = await client.query(
     `INSERT INTO directors (name_key, name)
@@ -258,6 +291,9 @@ try {
        FROM hx_import WHERE director_key <> ''
       ORDER BY director_key, director_name
      ON CONFLICT (name_key) DO NOTHING`,
+  );
+  log(
+    `Руководители добавлены: ${newDirectors.rowCount}. Добавление адресов...`,
   );
 
   const newAddresses = await client.query(
@@ -269,6 +305,9 @@ try {
       WHERE i.addr_key <> ''
       ORDER BY i.addr_key, i.addr_text
      ON CONFLICT (addr_key) DO NOTHING`,
+  );
+  log(
+    `Адреса добавлены: ${newAddresses.rowCount}. Запись состояний компаний...`,
   );
 
   await client.query(
@@ -286,6 +325,8 @@ try {
   );
 
   await client.query("COMMIT");
+  log("Срез сохранён. Обновление статистики...");
+
   await client.query("DROP TABLE hx_import");
   for (const table of [
     "territories",
@@ -296,11 +337,11 @@ try {
     await client.query(`ANALYZE ${table}`);
   }
 
-  console.log(
-    `Готово за ${seconds()} с. Территорий: ${regions.size} областей, ${districts.size} районов, ${localities.size} населённых пунктов.`,
+  log(
+    `Готово. Территорий: ${regions.size} областей, ${districts.size} районов, ${localities.size} населённых пунктов.`,
   );
-  console.log(
-    `Новых директоров: ${newDirectors.rowCount}, новых адресов: ${newAddresses.rowCount}. Строк пропущено (нет БИН): ${skipped}.`,
+  log(
+    `Новых руководителей: ${newDirectors.rowCount}, новых адресов: ${newAddresses.rowCount}. Строк пропущено (нет БИН): ${skipped}.`,
   );
 } catch (error) {
   await client.query("ROLLBACK");
