@@ -1,13 +1,48 @@
 import { formatDate } from "../../utils/dates";
+import { useLocale } from "../../i18n/context";
 import "./_CompaniesChart.scss";
 
 const WIDTH = 640;
-const HEIGHT = 240;
+const HEIGHT = 250;
 const PAD_X = 36;
 const PAD_TOP = 30;
-const PAD_BOTTOM = 42;
+const PAD_BOTTOM = 52;
+
+const MONTHS = {
+  ru: [
+    "янв",
+    "фев",
+    "мар",
+    "апр",
+    "май",
+    "июн",
+    "июл",
+    "авг",
+    "сен",
+    "окт",
+    "ноя",
+    "дек",
+  ],
+  kk: [
+    "қаң",
+    "ақп",
+    "нау",
+    "сәу",
+    "мам",
+    "мау",
+    "шіл",
+    "там",
+    "қыр",
+    "қаз",
+    "қар",
+    "жел",
+  ],
+};
 
 export default function CompaniesChart({ points, label }) {
+  const { locale } = useLocale();
+  const months = MONTHS[locale] || MONTHS.ru;
+
   const max = points.reduce(
     (best, point) => Math.max(best, point.companies),
     1,
@@ -15,6 +50,7 @@ export default function CompaniesChart({ points, label }) {
   const slot = (WIDTH - PAD_X * 2) / points.length;
   const barWidth = Math.min(90, slot * 0.6);
   const area = HEIGHT - PAD_TOP - PAD_BOTTOM;
+  const compactYears = points.length > 12;
 
   return (
     <svg
@@ -36,8 +72,13 @@ export default function CompaniesChart({ points, label }) {
         const y = HEIGHT - PAD_BOTTOM - height;
         const center = x + barWidth / 2;
 
+        const monthIndex = Number(point.takenOn.slice(5, 7)) - 1;
+        const year = point.takenOn.slice(0, 4);
+        const showYear = !compactYears || index === 0 || monthIndex === 0;
+
         return (
           <g key={point.takenOn}>
+            <title>{`${formatDate(point.takenOn)}: ${point.companies}`}</title>
             <rect
               className={`chart__bar${point.isTest ? " chart__bar--test" : ""}`}
               x={x}
@@ -57,10 +98,15 @@ export default function CompaniesChart({ points, label }) {
             <text
               className="chart__label"
               x={center}
-              y={HEIGHT - PAD_BOTTOM + 20}
+              y={HEIGHT - PAD_BOTTOM + 18}
               textAnchor="middle"
             >
-              {formatDate(point.takenOn)}
+              <tspan x={center}>{months[monthIndex] || ""}</tspan>
+              {showYear && (
+                <tspan x={center} dy="14">
+                  {year}
+                </tspan>
+              )}
             </text>
           </g>
         );
