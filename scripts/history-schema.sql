@@ -51,3 +51,14 @@ CREATE TABLE IF NOT EXISTS company_states (
 CREATE INDEX IF NOT EXISTS company_states_bin_idx ON company_states (bin, snapshot_id);
 CREATE INDEX IF NOT EXISTS company_states_address_idx ON company_states (address_id, snapshot_id);
 CREATE INDEX IF NOT EXISTS company_states_director_idx ON company_states (director_id, snapshot_id);
+
+CREATE TABLE IF NOT EXISTS company_names (
+  id serial PRIMARY KEY,
+  bin varchar(12) NOT NULL,
+  name_key text NOT NULL,
+  name_ru text,
+  name_kk text,
+  UNIQUE (bin, name_key)
+);
+
+ALTER TABLE company_states ADD COLUMN IF NOT EXISTS name_id integer REFERENCES company_names (id);

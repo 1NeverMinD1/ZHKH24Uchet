@@ -1,6 +1,18 @@
+import {
+  parseCompanyFilters,
+  toSqlConditions,
+} from "../../../utils/company-filters";
+
 const RESTRICT_GUESTS = false;
 
 const PAGE_SIZE = 20;
+const MAX_PAGE = 50;
+
+const codeOf = (value: string) => {
+  const slug = value.trim().toLowerCase();
+  const code = slug.slice(slug.lastIndexOf("-") + 1);
+  return /^[0-9a-z]{10}$/.test(code) ? code : "";
+};
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const getStrapi = (): any => (globalThis as any).strapi;
@@ -164,9 +176,11 @@ export default {
     );
 
     const page = Math.max(parseInt(String(ctx.query.page || "1"), 10) || 1, 1);
+    if (page > MAX_PAGE) return ctx.badRequest("Слишком далёкая страница");
     const meta: any = {
       page,
       pageSize: PAGE_SIZE,
+      maxPage: MAX_PAGE,
       total: 0,
       base: toSnapshot(base),
       end: toSnapshot(end),
@@ -225,6 +239,13 @@ export default {
       }
     }
 
+    let companyFilter = "";
+    const company = toSqlConditions(parseCompanyFilters(ctx.query), "c");
+    if (company.sql) {
+      companyFilter = `AND EXISTS (SELECT 1 FROM companies c WHERE c.bin = d.bin AND ${company.sql})`;
+      bindings.push(...company.bindings);
+    }
+
     bindings.push(PAGE_SIZE, (page - 1) * PAGE_SIZE);
 
     const list = await rows(
@@ -235,10 +256,11 @@ export default {
             AND (${conditions.join(" OR ")})
             ${territoryFilter}
             ${textFilter}
+            ${companyFilter}
           ORDER BY d.name_ru NULLS LAST, d.bin
           LIMIT ? OFFSET ?
        )
-       SELECT p.*,
+       SELECT p.*, c.slug,
               df.name AS director_from_name, dt.name AS director_to_name,
               a_from.address AS address_from_text, a_to.address AS address_to_text,
               t_from.path_ru AS address_from_place, t_to.path_ru AS address_to_place,
@@ -250,6 +272,7 @@ export default {
          LEFT JOIN addresses a_to ON a_to.id = p.address_to
          LEFT JOIN territories t_from ON t_from.id = a_from.territory_id
          LEFT JOIN territories t_to ON t_to.id = a_to.territory_id
+         LEFT JOIN companies c ON c.bin = p.bin
         ORDER BY p.name_ru NULLS LAST, p.bin`,
       bindings,
     );
@@ -264,6 +287,7 @@ export default {
 
         return {
           bin: row.bin,
+          slug: row.slug,
           nameRu: row.name_ru,
           nameKk: row.name_kk,
           unit: row.unit,
@@ -302,8 +326,15 @@ export default {
   async company(ctx: any) {
     if (blocked(ctx)) return ctx.forbidden();
 
-    const bin = String(ctx.params.bin || "").trim();
-    if (!/^\d{12}$/.test(bin)) return ctx.badRequest("Неверный БИН");
+    const code = codeOf(String(ctx.params.slug || ""));
+    if (!code) return ctx.notFound("История не найдена");
+
+    const found = await rows(
+      "SELECT bin FROM companies WHERE slug_code = ? LIMIT 1",
+      [code],
+    );
+    if (found.length === 0) return ctx.notFound("История не найдена");
+    const bin = found[0].bin;
 
     const list = await rows(
       `SELECT s.taken_on::text AS taken_on, s.is_test,
@@ -378,10 +409,11 @@ export default {
       snapshots[snapshots.length - 1];
 
     const page = Math.max(parseInt(String(ctx.query.page || "1"), 10) || 1, 1);
+    if (page > MAX_PAGE) return ctx.badRequest("Слишком далёкая страница");
 
     const companies = snapshot
       ? await rows(
-          `SELECT cs.bin, cs.unit, c.name_ru, c.name_kk, count(*) OVER () AS total
+          `SELECT cs.bin, cs.unit, c.slug, c.name_ru, c.name_kk, count(*) OVER () AS total
              FROM company_states cs
              LEFT JOIN companies c ON c.bin = cs.bin
             WHERE cs.snapshot_id = ? AND cs.address_id = ?
@@ -410,6 +442,7 @@ export default {
         snapshot: toSnapshot(snapshot),
         companies: companies.map((item) => ({
           bin: item.bin,
+          slug: item.slug,
           unit: item.unit,
           nameRu: item.name_ru,
           nameKk: item.name_kk,
@@ -417,6 +450,7 @@ export default {
         companiesTotal: companies.length > 0 ? Number(companies[0].total) : 0,
         page,
         pageSize: PAGE_SIZE,
+        maxPage: MAX_PAGE,
       },
     };
   },
@@ -473,6 +507,7 @@ export default {
     const snapshots = await loadSnapshots();
     const latest = snapshots[snapshots.length - 1];
     const page = Math.max(parseInt(String(ctx.query.page || "1"), 10) || 1, 1);
+    if (page > MAX_PAGE) return ctx.badRequest("Слишком далёкая страница");
 
     const timeline = await rows(
       `SELECT s.taken_on::text AS taken_on, s.is_test, count(cs.bin)::int AS companies
@@ -484,14 +519,14 @@ export default {
     );
 
     const companies = await rows(
-      `SELECT cs.bin, c.name_ru, c.name_kk,
+      `SELECT cs.bin, c.slug, c.name_ru, c.name_kk,
               min(s.taken_on)::text AS first_seen, max(s.taken_on)::text AS last_seen,
               bool_or(s.id = ?) AS current, count(*) OVER () AS total
          FROM company_states cs
          JOIN snapshots s ON s.id = cs.snapshot_id
          LEFT JOIN companies c ON c.bin = cs.bin
         WHERE cs.director_id = ?
-        GROUP BY cs.bin, c.name_ru, c.name_kk
+        GROUP BY cs.bin, c.slug, c.name_ru, c.name_kk
         ORDER BY bool_or(s.id = ?) DESC, c.name_ru NULLS LAST, cs.bin
         LIMIT ? OFFSET ?`,
       [
@@ -516,6 +551,7 @@ export default {
         })),
         companies: companies.map((item) => ({
           bin: item.bin,
+          slug: item.slug,
           nameRu: item.name_ru,
           nameKk: item.name_kk,
           firstSeen: item.first_seen,
@@ -525,6 +561,7 @@ export default {
         companiesTotal: companies.length > 0 ? Number(companies[0].total) : 0,
         page,
         pageSize: PAGE_SIZE,
+        maxPage: MAX_PAGE,
       },
     };
   },

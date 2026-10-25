@@ -7,13 +7,18 @@ export default {
     },
     {
       method: "GET",
-      path: "/company-card/:bin",
+      path: "/company-card/:slug",
       handler: "company.card",
     },
     {
       method: "GET",
       path: "/company-list",
       handler: "company.list",
+    },
+    {
+      method: "GET",
+      path: "/company-filters",
+      handler: "company.filters",
     },
     {
       method: "GET",

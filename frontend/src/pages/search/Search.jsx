@@ -2,6 +2,13 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import client from "../../api/client";
 import SEO from "../../components/seo/SEO";
+import CompanyLink from "../../components/company/CompanyLink";
+import CompanyFilters from "../../components/filters/CompanyFilters";
+import {
+  FILTER_KEYS,
+  listParams,
+  readFilters,
+} from "../../utils/companyFilters";
 import { Link } from "../../i18n/router";
 import { useNavigate } from "../../i18n/useNavigate";
 import { useLocale } from "../../i18n/context";
@@ -11,14 +18,13 @@ import { formatDate } from "../../utils/dates";
 import "./_Search.scss";
 import "../companies/_Companies.scss";
 
-const KINDS = ["director", "address"];
-
-const compact = (object) =>
-  Object.fromEntries(
-    Object.entries(object).filter(
-      ([, value]) => value !== "" && value !== undefined && value !== null,
-    ),
-  );
+const requestFor = (q, filters, page) =>
+  filters.changed
+    ? { url: "/history/changes", params: { q, ...filters, page } }
+    : {
+        url: "/company-search",
+        params: { q, ...listParams(filters), page },
+      };
 
 export default function Search() {
   const navigate = useNavigate();
@@ -26,16 +32,9 @@ export default function Search() {
   const [params, setParams] = useSearchParams();
 
   const q = (params.get("q") || "").trim();
-  const changedKey = (params.get("changed") || "")
-    .split(",")
-    .filter((kind) => KINDS.includes(kind))
-    .join(",");
-  const from = params.get("from") || "";
-  const to = params.get("to") || "";
-  const region = params.get("region") || "";
-  const district = params.get("district") || "";
-  const historyMode = changedKey !== "";
-  const key = JSON.stringify({ q, changedKey, from, to, region, district });
+  const filters = readFilters(params);
+  const historyMode = Boolean(filters.changed);
+  const key = JSON.stringify({ q, filters });
 
   const [result, setResult] = useState({
     key: null,
@@ -46,74 +45,15 @@ export default function Search() {
     failed: false,
   });
   const [people, setPeople] = useState({ q: null, items: [] });
-  const [snapshots, setSnapshots] = useState([]);
-  const [regions, setRegions] = useState([]);
-  const [districts, setDistricts] = useState({ region: "", list: [] });
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreFailed, setMoreFailed] = useState(false);
-
-  const requestFor = (page) =>
-    historyMode
-      ? {
-          url: "/history/changes",
-          params: compact({
-            q,
-            changed: changedKey,
-            from,
-            to,
-            region,
-            district,
-            page,
-          }),
-        }
-      : {
-          url: "/company-search",
-          params: compact({ q, region, district, page }),
-        };
-
-  useEffect(() => {
-    let cancelled = false;
-
-    client
-      .get("/history/snapshots")
-      .then(({ data }) => {
-        if (!cancelled) setSnapshots(data.data);
-      })
-      .catch(() => {});
-
-    client
-      .get("/history/territories")
-      .then(({ data }) => {
-        if (!cancelled) setRegions(data.data);
-      })
-      .catch(() => {});
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!region) return;
-    let cancelled = false;
-
-    client
-      .get("/history/territories", { params: { parent: region } })
-      .then(({ data }) => {
-        if (!cancelled) setDistricts({ region, list: data.data });
-      })
-      .catch(() => {});
-
-    return () => {
-      cancelled = true;
-    };
-  }, [region]);
 
   useEffect(() => {
     if (!q) return;
     let cancelled = false;
     const requestKey = key;
-    const request = requestFor(1);
+    const parsed = JSON.parse(requestKey);
+    const request = requestFor(parsed.q, parsed.filters, 1);
 
     client
       .get(request.url, { params: request.params })
@@ -144,7 +84,7 @@ export default function Search() {
     return () => {
       cancelled = true;
     };
-  }, [key]);
+  }, [key, q]);
 
   useEffect(() => {
     if (q.length < 4 || /^\d+$/.test(q)) return;
@@ -176,23 +116,13 @@ export default function Search() {
     setParams(next, { replace: true });
   };
 
-  const toggleKind = (kind) => {
-    const selected = new Set(changedKey ? changedKey.split(",") : []);
-    if (selected.has(kind)) {
-      selected.delete(kind);
-    } else {
-      selected.add(kind);
-    }
-    update({ changed: KINDS.filter((item) => selected.has(item)).join(",") });
-  };
-
   const resetFilters = () =>
-    update({ changed: "", from: "", to: "", region: "", district: "" });
+    update(Object.fromEntries(FILTER_KEYS.map((name) => [name, ""])));
 
   const handleLoadMore = async () => {
     const requestKey = key;
     const page = result.page + 1;
-    const request = requestFor(page);
+    const request = requestFor(q, filters, page);
     setLoadingMore(true);
     setMoreFailed(false);
 
@@ -227,12 +157,9 @@ export default function Search() {
   };
 
   const directors = people.q === q ? people.items : [];
-  const districtList = districts.region === region ? districts.list : [];
-  const lastSnapshot = snapshots[snapshots.length - 1];
-  const defaultTo = lastSnapshot ? lastSnapshot.takenOn : "";
-  const defaultFrom =
-    snapshots.length > 1 ? snapshots[snapshots.length - 2].takenOn : defaultTo;
-  const hasFilters = historyMode || region !== "";
+  const canLoadMore =
+    result.items.length < result.total &&
+    result.page < (result.meta?.maxPage ?? Infinity);
 
   const nameOf = (item) =>
     shortName(
@@ -247,104 +174,13 @@ export default function Search() {
     return [address.text, place].filter(Boolean).join(", ");
   };
 
-  const filters = (
-    <div className="filters">
-      <div className="filters__row">
-        <label className="filters__check">
-          <input
-            type="checkbox"
-            checked={changedKey.split(",").includes("director")}
-            onChange={() => toggleKind("director")}
-          />
-          {t("history.directorChanged")}
-        </label>
-        <label className="filters__check">
-          <input
-            type="checkbox"
-            checked={changedKey.split(",").includes("address")}
-            onChange={() => toggleKind("address")}
-          />
-          {t("history.addressChanged")}
-        </label>
-      </div>
-
-      <div className="filters__row">
-        <label className="filters__field">
-          {t("history.from")}
-          <select
-            className="filters__select"
-            value={from || defaultFrom}
-            disabled={!historyMode || snapshots.length < 2}
-            onChange={(e) => update({ from: e.target.value })}
-          >
-            {snapshots.map((snapshot) => (
-              <option key={snapshot.id} value={snapshot.takenOn}>
-                {formatDate(snapshot.takenOn)}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="filters__field">
-          {t("history.to")}
-          <select
-            className="filters__select"
-            value={to || defaultTo}
-            disabled={!historyMode || snapshots.length < 2}
-            onChange={(e) => update({ to: e.target.value })}
-          >
-            {snapshots.map((snapshot) => (
-              <option key={snapshot.id} value={snapshot.takenOn}>
-                {formatDate(snapshot.takenOn)}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="filters__field">
-          {t("history.region")}
-          <select
-            className="filters__select"
-            value={region}
-            onChange={(e) => update({ region: e.target.value, district: "" })}
-          >
-            <option value="">{t("history.regionAll")}</option>
-            {regions.map((item) => (
-              <option key={item.kato} value={item.kato.slice(0, 2)}>
-                {pick(item, "name", locale)}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="filters__field">
-          {t("history.district")}
-          <select
-            className="filters__select"
-            value={district}
-            disabled={!region}
-            onChange={(e) => update({ district: e.target.value })}
-          >
-            <option value="">{t("history.districtAll")}</option>
-            {districtList.map((item) => (
-              <option key={item.kato} value={item.kato.slice(0, 4)}>
-                {pick(item, "name", locale)}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {hasFilters && (
-          <button
-            className="filters__reset"
-            type="button"
-            onClick={resetFilters}
-          >
-            {t("history.reset")}
-          </button>
-        )}
-      </div>
-
+  const filterBlock = (
+    <>
+      <CompanyFilters
+        filters={filters}
+        update={update}
+        onReset={resetFilters}
+      />
       {historyMode && result.key === key && result.meta?.base && (
         <div className="filters__summary">
           <p>
@@ -355,7 +191,7 @@ export default function Search() {
           </p>
         </div>
       )}
-    </div>
+    </>
   );
 
   let content;
@@ -366,7 +202,7 @@ export default function Search() {
     content = (
       <>
         <h1 className="search__title">{t("search.title", { q })}</h1>
-        {filters}
+        {filterBlock}
         <p className="search__message">{t("search.loading")}</p>
       </>
     );
@@ -375,7 +211,7 @@ export default function Search() {
       <>
         <h1 className="search__title">{t("search.title", { q })}</h1>
 
-        {filters}
+        {filterBlock}
 
         {directors.length > 0 && (
           <div className="search__people">
@@ -429,11 +265,7 @@ export default function Search() {
         <div className="search__list">
           {historyMode &&
             result.items.map((item) => (
-              <Link
-                key={item.bin}
-                to={`/company/${item.bin}`}
-                className="change"
-              >
+              <CompanyLink key={item.bin} slug={item.slug} className="change">
                 <p className="change__name">{nameOf(item)}</p>
                 <p className="change__meta">
                   {t("company.bin")} {item.bin}
@@ -460,16 +292,16 @@ export default function Search() {
                     <span>{addressOf(item.address.to)}</span>
                   </p>
                 )}
-              </Link>
+              </CompanyLink>
             ))}
 
           {!historyMode &&
             result.items.map((item) => {
               const locality = pick(item, "locality", locale);
               return (
-                <Link
+                <CompanyLink
                   key={item.bin}
-                  to={`/company/${item.bin}`}
+                  slug={item.slug}
                   className="search__item"
                 >
                   <div>
@@ -481,7 +313,7 @@ export default function Search() {
                       {locality ? ` · ${locality}` : ""}
                     </p>
                   </div>
-                </Link>
+                </CompanyLink>
               );
             })}
         </div>
@@ -490,7 +322,7 @@ export default function Search() {
           <p className="search__message">{t("companies.moreError")}</p>
         )}
 
-        {result.items.length < result.total && (
+        {canLoadMore && (
           <button
             className="search__more"
             onClick={handleLoadMore}

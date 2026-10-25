@@ -22,7 +22,7 @@ const pages = (
     <Route path="login" element={<Login />} />
     <Route path="register" element={<Register />} />
     <Route path="profile" element={<Profile />} />
-    <Route path="company/:bin" element={<Company />} />
+    <Route path="company/:slug" element={<Company />} />
     <Route path="address/:id" element={<Address />} />
     <Route path="director/:id" element={<Director />} />
     <Route path="search" element={<Search />} />

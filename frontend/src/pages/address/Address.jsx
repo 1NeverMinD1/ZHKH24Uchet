@@ -3,8 +3,8 @@ import { useParams } from "react-router-dom";
 import client from "../../api/client";
 import SEO from "../../components/seo/SEO";
 import Breadcrumbs from "../../components/breadcrumbs/Breadcrumbs";
+import CompanyLink from "../../components/company/CompanyLink";
 import NotFound from "../notfound/NotFound";
-import { Link } from "../../i18n/router";
 import { useLocale } from "../../i18n/context";
 import { shortName } from "../../utils/companyName";
 import { formatDate } from "../../utils/dates";
@@ -128,6 +128,9 @@ export default function Address() {
   const last = timeline[timeline.length - 1];
   const difference = last.companies - first.companies;
   const selected = date || info.snapshot?.takenOn || "";
+  const canLoadMore =
+    data.companies.length < data.total &&
+    data.page < (info.maxPage ?? Infinity);
 
   const crumbs = [
     { name: t("breadcrumbs.home"), path: "/" },
@@ -212,9 +215,9 @@ export default function Address() {
 
           <div className="search__list">
             {data.companies.map((item) => (
-              <Link
+              <CompanyLink
                 key={item.bin}
-                to={`/company/${item.bin}`}
+                slug={item.slug}
                 className="search__item"
               >
                 <div>
@@ -226,11 +229,11 @@ export default function Address() {
                       : ""}
                   </p>
                 </div>
-              </Link>
+              </CompanyLink>
             ))}
           </div>
 
-          {data.companies.length < data.total && (
+          {canLoadMore && (
             <button
               className="search__more"
               onClick={handleLoadMore}

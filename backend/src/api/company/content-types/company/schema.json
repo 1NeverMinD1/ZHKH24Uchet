@@ -38,6 +38,10 @@
     "locality_kk": { "type": "text" },
     "locality_ru": { "type": "text" },
     "legal_address": { "type": "text" },
-    "director_name": { "type": "string" }
+    "director_name": { "type": "string" },
+    "slug": { "type": "string" },
+    "slug_code": { "type": "string" },
+    "legal_form": { "type": "string" },
+    "sort_name": { "type": "string" }
   }
 }

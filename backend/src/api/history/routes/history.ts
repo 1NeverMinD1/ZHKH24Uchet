@@ -17,7 +17,7 @@ export default {
     },
     {
       method: "GET",
-      path: "/history/company/:bin",
+      path: "/history/company/:slug",
       handler: "history.company",
     },
     {

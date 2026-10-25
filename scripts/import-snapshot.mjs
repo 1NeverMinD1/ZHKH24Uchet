@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import ExcelJS from "exceljs";
@@ -17,6 +17,10 @@ if (!filePath || !/^\d{4}-\d{2}-\d{2}$/.test(takenOn || "")) {
   console.error(
     'Использование: node import-snapshot.mjs "путь\\к\\файлу.xlsx" ГГГГ-ММ-ДД [--replace]',
   );
+  process.exit(1);
+}
+if (!existsSync(filePath)) {
+  console.error(`Файл не найден: ${filePath}`);
   process.exit(1);
 }
 if (!process.env.DATABASE_PASSWORD) {
@@ -44,8 +48,14 @@ const directorKey = (name) =>
     .replace(/\s+/g, " ")
     .trim();
 
+const nameKey = (ru, kk) =>
+  ru || kk ? `${directorKey(ru)}|${directorKey(kk)}` : "";
+
 const COLUMNS = [
   "bin",
+  "name_key",
+  "name_ru",
+  "name_kk",
   "director_key",
   "director_name",
   "addr_key",
@@ -73,8 +83,14 @@ const toRow = (cells) => {
   const director = clean(cells[22]);
   const address = parseAddress(clean(cells[21]), kato);
 
+  const nameKk = clean(cells[2]);
+  const nameRu = clean(cells[3]);
+
   return [
     bin,
+    nameKey(nameRu, nameKk),
+    nameRu,
+    nameKk,
     directorKey(director),
     director,
     address.key,
@@ -193,16 +209,12 @@ const found = await client.query(
   "SELECT id FROM snapshots WHERE taken_on = $1",
   [takenOn],
 );
-if (found.rows.length > 0) {
-  if (!REPLACE) {
-    console.error(
-      `Срез на ${takenOn} уже загружен. Для перезаписи нужен флаг --replace.`,
-    );
-    process.exit(1);
-  }
-  log(`Удаление существующего среза на ${takenOn}...`);
-  await client.query("DELETE FROM snapshots WHERE id = $1", [found.rows[0].id]);
-  log("Существующий срез удалён.");
+const replaceId = found.rows[0]?.id;
+if (replaceId && !REPLACE) {
+  console.error(
+    `Срез на ${takenOn} уже загружен. Для перезаписи нужен флаг --replace.`,
+  );
+  process.exit(1);
 }
 
 await client.query("DROP TABLE IF EXISTS hx_import");
@@ -273,6 +285,12 @@ log(`Файл прочитан: ${valid} компаний. Построение 
 try {
   await client.query("BEGIN");
 
+  if (replaceId) {
+    log(`Удаление существующего среза на ${takenOn}...`);
+    await client.query("DELETE FROM snapshots WHERE id = $1", [replaceId]);
+    log("Существующий срез удалён.");
+  }
+
   const snapshot = await client.query(
     "INSERT INTO snapshots (taken_on, source) VALUES ($1, $2) RETURNING id",
     [takenOn, basename(filePath)],
@@ -306,14 +324,23 @@ try {
       ORDER BY i.addr_key, i.addr_text
      ON CONFLICT (addr_key) DO NOTHING`,
   );
-  log(
-    `Адреса добавлены: ${newAddresses.rowCount}. Запись состояний компаний...`,
+  log(`Адреса добавлены: ${newAddresses.rowCount}. Добавление названий...`);
+
+  const newNames = await client.query(
+    `INSERT INTO company_names (bin, name_key, name_ru, name_kk)
+     SELECT DISTINCT ON (bin, name_key) bin, name_key,
+            NULLIF(name_ru, ''), NULLIF(name_kk, '')
+       FROM hx_import WHERE name_key <> ''
+      ORDER BY bin, name_key, name_ru
+     ON CONFLICT (bin, name_key) DO NOTHING`,
   );
+  log(`Названия добавлены: ${newNames.rowCount}. Запись состояний компаний...`);
 
   await client.query(
-    `INSERT INTO company_states (snapshot_id, bin, director_id, address_id, unit)
-     SELECT $1, i.bin, d.id, a.id, NULLIF(i.unit, '')
+    `INSERT INTO company_states (snapshot_id, bin, name_id, director_id, address_id, unit)
+     SELECT $1, i.bin, n.id, d.id, a.id, NULLIF(i.unit, '')
        FROM (SELECT DISTINCT ON (bin) * FROM hx_import ORDER BY bin) i
+       LEFT JOIN company_names n ON n.bin = i.bin AND n.name_key = i.name_key
        LEFT JOIN directors d ON d.name_key = i.director_key
        LEFT JOIN addresses a ON a.addr_key = i.addr_key`,
     [snapshotId],
@@ -330,6 +357,7 @@ try {
   await client.query("DROP TABLE hx_import");
   for (const table of [
     "territories",
+    "company_names",
     "directors",
     "addresses",
     "company_states",

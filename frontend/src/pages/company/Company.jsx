@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import client from "../../api/client";
 import SEO from "../../components/seo/SEO";
 import JsonLd from "../../components/seo/JsonLd";
@@ -14,7 +14,11 @@ import { pick } from "../../utils/localized";
 import CompanyHistory from "../../components/history/CompanyHistory";
 import "./_Company.scss";
 
-const BIN_PATTERN = /^\d{12}$/;
+const codeOf = (value = "") => {
+  const slug = value.toLowerCase();
+  const code = slug.slice(slug.lastIndexOf("-") + 1);
+  return /^[0-9a-z]{10}$/.test(code) ? code : "";
+};
 
 const formatDate = (value) => {
   if (!value) return "";
@@ -84,11 +88,12 @@ const buildSchema = ({
 });
 
 export default function Company() {
-  const { bin } = useParams();
+  const { slug = "" } = useParams();
+  const navigate = useNavigate();
   const { locale, t } = useLocale();
-  const validBin = BIN_PATTERN.test(bin);
+  const code = codeOf(slug);
   const [result, setResult] = useState({
-    bin: null,
+    code: null,
     company: null,
     access: "guest",
     error: "",
@@ -96,15 +101,15 @@ export default function Company() {
   });
 
   useEffect(() => {
-    if (!validBin) return;
+    if (!code) return;
     let cancelled = false;
 
     client
-      .get(`/company-card/${bin}`)
+      .get(`/company-card/${code}`)
       .then(({ data }) => {
         if (cancelled) return;
         setResult({
-          bin,
+          code,
           company: data.data,
           access: data.access,
           error: "",
@@ -115,7 +120,7 @@ export default function Company() {
         if (cancelled) return;
         const notFound = err.response?.status === 404;
         setResult({
-          bin,
+          code,
           company: null,
           access: "guest",
           error: notFound ? "" : "company.loadError",
@@ -126,35 +131,35 @@ export default function Company() {
     return () => {
       cancelled = true;
     };
-  }, [bin, validBin]);
+  }, [code]);
 
-  if (!validBin) {
+  const actualSlug = result.code === code ? result.company?.slug : null;
+
+  useEffect(() => {
+    if (actualSlug && actualSlug !== slug) {
+      navigate(localizePath(locale, `/company/${actualSlug}`), {
+        replace: true,
+      });
+    }
+  }, [actualSlug, slug, locale, navigate]);
+
+  if (!code || (result.code === code && result.notFound)) {
     return (
       <NotFound
         title={t("company.notFoundTitle")}
-        text={t("company.invalidBin")}
+        text={t("company.notFoundText")}
       />
     );
   }
 
-  if (result.bin !== bin) {
+  if (result.code !== code) {
     return (
       <section className="company">
-        <SEO title={t("company.loadingTitle", { bin })} noindex />
+        <SEO title={t("common.loading")} noindex />
         {t("common.loading")}
       </section>
     );
   }
-
-  if (result.notFound) {
-    return (
-      <NotFound
-        title={t("company.notFoundTitle")}
-        text={t("company.notInBase", { bin })}
-      />
-    );
-  }
-
   if (result.error) {
     return (
       <section className="company">
@@ -187,7 +192,7 @@ export default function Company() {
   const crumbs = [
     { name: t("breadcrumbs.home"), path: "/" },
     { name: t("companies.title"), path: "/companies" },
-    { name: title, path: `/company/${company.bin}` },
+    { name: title, path: `/company/${company.slug}` },
   ];
 
   const schema = buildSchema({
@@ -195,7 +200,7 @@ export default function Company() {
     name: title,
     legalName: primary,
     alternateName: secondary,
-    url: `${SITE_URL}${localizePath(locale, `/company/${company.bin}`)}`,
+    url: `${SITE_URL}${localizePath(locale, `/company/${company.slug}`)}`,
     locale,
     activity,
     locality,
@@ -296,7 +301,7 @@ export default function Company() {
           />
         </dl>
 
-        <CompanyHistory bin={company.bin} locked={locked} />
+        <CompanyHistory slug={company.slug} locked={locked} />
       </div>
     </section>
   );

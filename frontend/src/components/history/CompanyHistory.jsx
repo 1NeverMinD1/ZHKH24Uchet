@@ -5,24 +5,28 @@ import { useLocale } from "../../i18n/context";
 import { formatDate } from "../../utils/dates";
 import "./_CompanyHistory.scss";
 
-export default function CompanyHistory({ bin, locked }) {
+export default function CompanyHistory({ slug, locked }) {
   const { locale, t } = useLocale();
-  const [state, setState] = useState({ bin: null, data: null, status: "idle" });
+  const [state, setState] = useState({
+    slug: null,
+    data: null,
+    status: "idle",
+  });
 
   useEffect(() => {
-    if (locked) return;
+    if (locked || !slug) return;
     let cancelled = false;
 
     client
-      .get(`/history/company/${bin}`)
+      .get(`/history/company/${slug}`)
       .then(({ data }) => {
         if (cancelled) return;
-        setState({ bin, data: data.data, status: "ok" });
+        setState({ slug, data: data.data, status: "ok" });
       })
       .catch((error) => {
         if (cancelled) return;
         setState({
-          bin,
+          slug,
           data: null,
           status: error.response?.status === 404 ? "none" : "error",
         });
@@ -31,7 +35,7 @@ export default function CompanyHistory({ bin, locked }) {
     return () => {
       cancelled = true;
     };
-  }, [bin, locked]);
+  }, [slug, locked]);
 
   if (locked) {
     return (
@@ -42,7 +46,7 @@ export default function CompanyHistory({ bin, locked }) {
     );
   }
 
-  if (state.bin !== bin || state.status === "none") return null;
+  if (state.slug !== slug || state.status === "none") return null;
 
   if (state.status === "error") {
     return (

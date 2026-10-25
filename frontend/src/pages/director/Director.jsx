@@ -4,8 +4,8 @@ import client from "../../api/client";
 import SEO from "../../components/seo/SEO";
 import Breadcrumbs from "../../components/breadcrumbs/Breadcrumbs";
 import CompaniesChart from "../../components/history/CompaniesChart";
+import CompanyLink from "../../components/company/CompanyLink";
 import NotFound from "../notfound/NotFound";
-import { Link } from "../../i18n/router";
 import { useLocale } from "../../i18n/context";
 import { shortName } from "../../utils/companyName";
 import { formatDate } from "../../utils/dates";
@@ -119,6 +119,9 @@ export default function Director() {
   }
 
   const { info } = data;
+  const canLoadMore =
+    data.companies.length < data.total &&
+    data.page < (info.maxPage ?? Infinity);
 
   const crumbs = [
     { name: t("breadcrumbs.home"), path: "/" },
@@ -171,9 +174,9 @@ export default function Director() {
 
           <div className="search__list director__list">
             {data.companies.map((item) => (
-              <Link
+              <CompanyLink
                 key={item.bin}
-                to={`/company/${item.bin}`}
+                slug={item.slug}
                 className="search__item"
               >
                 <div>
@@ -191,11 +194,11 @@ export default function Director() {
                     ? t("history.card.current")
                     : t("director.past")}
                 </span>
-              </Link>
+              </CompanyLink>
             ))}
           </div>
 
-          {data.companies.length < data.total && (
+          {canLoadMore && (
             <button
               className="search__more"
               onClick={handleLoadMore}

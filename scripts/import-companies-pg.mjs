@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import ExcelJS from "exceljs";
 import pg from "pg";
 
@@ -29,6 +30,10 @@ const DATA_COLUMNS = [
   "locality_ru",
   "legal_address",
   "director_name",
+  "slug",
+  "slug_code",
+  "legal_form",
+  "sort_name",
 ];
 
 const UPDATE_COLUMNS = DATA_COLUMNS.filter((c) => c !== "bin");
@@ -39,6 +44,10 @@ if (!filePath) {
   console.error(
     'Использование: node import-companies-pg.mjs "путь\\к\\файлу.xlsx" [лимит]',
   );
+  process.exit(1);
+}
+if (!process.env.SLUG_SECRET) {
+  console.error("Не задан SLUG_SECRET (ключ для кодов в адресах компаний).");
   process.exit(1);
 }
 if (!process.env.DATABASE_PASSWORD) {
@@ -69,12 +78,157 @@ const toIsoDate = (value) => {
     .slice(0, 10);
 };
 
+const TRANSLIT = {
+  а: "a",
+  б: "b",
+  в: "v",
+  г: "g",
+  д: "d",
+  е: "e",
+  ё: "e",
+  ж: "zh",
+  з: "z",
+  и: "i",
+  й: "y",
+  к: "k",
+  л: "l",
+  м: "m",
+  н: "n",
+  о: "o",
+  п: "p",
+  р: "r",
+  с: "s",
+  т: "t",
+  у: "u",
+  ф: "f",
+  х: "kh",
+  ц: "ts",
+  ч: "ch",
+  ш: "sh",
+  щ: "shch",
+  ъ: "",
+  ы: "y",
+  ь: "",
+  э: "e",
+  ю: "yu",
+  я: "ya",
+  ә: "a",
+  ғ: "g",
+  қ: "k",
+  ң: "n",
+  ө: "o",
+  ұ: "u",
+  ү: "u",
+  һ: "h",
+  і: "i",
+};
+
+const slugCode = (bin) => {
+  const hex = createHmac("sha256", process.env.SLUG_SECRET)
+    .update(bin)
+    .digest("hex");
+  return Number.parseInt(hex.slice(0, 13), 16)
+    .toString(36)
+    .padStart(10, "0")
+    .slice(-10);
+};
+
+const slugName = (name) => {
+  const prepared = name.replace(/''/g, '"');
+  const quoted = prepared.match(/[«"“]([^»"”]+)[»"”]/);
+  const latin = [...(quoted ? quoted[1] : prepared).toLowerCase()]
+    .map((char) => TRANSLIT[char] ?? char)
+    .join("")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (latin.length <= 60) return latin || "company";
+  return latin.slice(0, 60).replace(/-[^-]*$/, "") || latin.slice(0, 60);
+};
+
+const QUOTES = /[«»"“”„]/;
+
+const LEGAL_FORMS = [
+  ["branch", /^(ФИЛИАЛ|ПРЕДСТАВИТЕЛЬСТВО)( |$)/],
+  ["ksk", /КООПЕРАТИВ\S* СОБСТВЕННИКОВ (КВАРТИР|ПОМЕЩЕНИЙ)|^(ПК )?КСК( |$)/],
+  [
+    "partnership",
+    /ТОВАРИЩЕСТВ\S* С ДОПОЛНИТЕЛЬНОЙ|^(ПОЛНОЕ|КОММАНДИТНОЕ) ТОВАРИЩЕСТВО|СЕЛЬСКОХОЗЯЙСТВЕННОЕ ТОВАРИЩЕСТВО|^(ТДО|КТ)( |$)/,
+  ],
+  ["too", /ТОВАРИЩЕСТВ.*(ОГ?Р\S*НИЧ|ОТВЕ\S*СТВЕННОСТ)|^ТОО( |$)/],
+  [
+    "aifc",
+    /^(ЧАСТНАЯ|ПУБЛИЧНАЯ) КОМПАНИЯ|^КОМПАНИЯ СПЕЦИАЛЬНОГО НАЗНАЧЕНИЯ|^ЧК( |$)|^ПАРТНЕРСТВО С ОГРАНИЧЕННОЙ|^ОГРАНИЧЕННОЕ ПАРТНЕРСТВО|^НЕКОММЕРЧЕСКАЯ ОРГАНИЗАЦИЯ/,
+  ],
+  [
+    "ao",
+    /^((НЕКОММЕРЧЕСКОЕ|ЗАКРЫТОЕ|ОТКРЫТОЕ) )?АКЦИОНЕРНОЕ ОБЩЕСТВО|^(АО|НАО|ЗАО|ОАО)( |$)/,
+  ],
+  ["osi", /^ОБ[ЪЬ]?ЕД[ИЕ]Н\S* СОБСТВЕННИКОВ ИМУЩЕСТВА|^ОСИ( |$)/],
+  ["coop", /КООПЕРАТИВ|^(ПК|СПК|СХПК|ЖСК|ПГК)( |$)/],
+  ["gov_enterprise", /ГОСУДА\S*.*ПРЕДП|^(ГКП|КГКП|КГП|РГП|РГКП)( |$)/],
+  ["gov_institution", /ГОСУДА\S*.*УЧЕ?РЕЖД|^(ГУ|КГУ|РГУ)( |$)/],
+  [
+    "association",
+    /ОБ[ЪЬ]?ЕД[ИЕ]Н|АССОЦИАЦИ|СОЮЗ( |$)|ПАЛАТА( |$)|КОЛЛЕГИЯ( |$)|^(ОО|ООИ|ОЮЛ|РОО)( |$)/,
+  ],
+  ["fund", /ФОНД( |$)|^(ОФ|ЧФ|КФ)( |$)/],
+  ["institution", /УЧЕ?РЕЖД|^ЧУ( |$)/],
+];
+const FORM_PREFIX =
+  /^(ТОВАРИЩЕСТВ[ОА] С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ|ТОО|(ЧАСТНАЯ|ПУБЛИЧНАЯ) КОМПАНИЯ( (ОТКРЫТОГО|ЗАКРЫТОГО) ИНВЕСТИЦИОННОГО ТИПА)?|КОМПАНИЯ СПЕЦИАЛЬНОГО НАЗНАЧЕНИЯ|ЧК)\s+/i;
+
+const splitName = (name) => {
+  const text = name.replace(/''/g, '"');
+  const first = text.search(QUOTES);
+  if (first === -1) return { form: text, inner: "" };
+
+  let last = first;
+  for (let i = text.length - 1; i > first; i -= 1) {
+    if (QUOTES.test(text[i])) {
+      last = i;
+      break;
+    }
+  }
+
+  const head = text.slice(0, first);
+  const tail = last > first ? text.slice(last + 1) : "";
+  const inner =
+    last > first ? text.slice(first + 1, last) : text.slice(first + 1);
+
+  return {
+    form: head.trim() ? head : tail.trim() ? tail : inner,
+    inner,
+  };
+};
+
+const legalFormOf = (form) => {
+  const head = form
+    .toUpperCase()
+    .replace(/Ё/g, "Е")
+    .replace(/[^А-ЯA-Z0-9]+/g, " ")
+    .trim();
+  for (const [code, pattern] of LEGAL_FORMS) {
+    if (pattern.test(head)) return code;
+  }
+  return "other";
+};
+
+const trimJunk = (value) => value.replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+
+const sortNameOf = (name, inner) =>
+  (
+    trimJunk(inner || name.replace(FORM_PREFIX, "")) || trimJunk(name)
+  ).toUpperCase();
+
 const toRecord = (cells) => {
   const bin = clean(cells[1]);
   if (!/^\d{12}$/.test(bin)) return null;
 
   const nameRu = clean(cells[3]);
   if (!nameRu) return null;
+
+  const code = slugCode(bin);
+  const parts = splitName(nameRu);
 
   return {
     bin,
@@ -99,6 +253,10 @@ const toRecord = (cells) => {
     locality_ru: clean(cells[20]),
     legal_address: clean(cells[21]),
     director_name: clean(cells[22]),
+    slug: `${slugName(nameRu)}-${code}`,
+    slug_code: code,
+    legal_form: legalFormOf(parts.form),
+    sort_name: sortNameOf(nameRu, parts.inner),
   };
 };
 
