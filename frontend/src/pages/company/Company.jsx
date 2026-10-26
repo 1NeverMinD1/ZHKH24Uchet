@@ -227,6 +227,13 @@ export default function Company() {
             <p className="company__bin">
               {t("company.bin")} {company.bin}
             </p>
+            {company.status === "gone" && (
+              <p className="company__status company__status--gone">
+                {t("company.goneSince", {
+                  date: formatDate(company.last_seen),
+                })}
+              </p>
+            )}
           </div>
         </div>
 
@@ -245,6 +252,13 @@ export default function Company() {
         )}
 
         <dl className="company__list">
+          <Row
+            label={t("company.category")}
+            value={
+              company.legal_form ? t(`legalForm.${company.legal_form}`) : ""
+            }
+            lockedText={lockedText}
+          />
           <Row label={t("company.oked")} value={oked} lockedText={lockedText} />
           <Row
             label={t("company.secondaryOked")}

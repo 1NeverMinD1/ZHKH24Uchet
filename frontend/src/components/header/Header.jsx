@@ -87,6 +87,9 @@ export default function Header() {
             <NavLink to="/companies" className={linkClass} onClick={closeAll}>
               <StableLabel k="header.companies" />
             </NavLink>
+            <NavLink to="/stats" className={linkClass} onClick={closeAll}>
+              <StableLabel k="header.stats" />
+            </NavLink>
             <span
               className="header__link header__link--soon"
               title={t("header.soon")}

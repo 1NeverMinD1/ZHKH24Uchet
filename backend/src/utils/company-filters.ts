@@ -22,6 +22,11 @@ const digits = (value: unknown, max: number) =>
     .replace(/\D/g, "")
     .slice(0, max);
 
+const code = (value: unknown) =>
+  String(value ?? "")
+    .replace(/[^0-9A-Za-z.]/g, "")
+    .slice(0, 12);
+
 export type CompanyFilters = {
   prefix: string;
   form: string;
@@ -31,7 +36,10 @@ export type CompanyFilters = {
   kfs: string;
   registeredFrom: string;
   registeredTo: string;
+  status: string;
 };
+
+const STATUSES = ["active", "gone", "all"];
 
 export const parseCompanyFilters = (query: any): CompanyFilters => {
   const district = digits(query.district, 4);
@@ -39,17 +47,19 @@ export const parseCompanyFilters = (query: any): CompanyFilters => {
   const form = String(query.form || "");
   const registeredFrom = String(query.registered_from || "");
   const registeredTo = String(query.registered_to || "");
+  const status = String(query.status || "");
 
   return {
     prefix:
       district.length === 4 ? district : region.length === 2 ? region : "",
     form: LEGAL_FORMS.includes(form) ? form : "",
     oked: digits(query.oked, 5),
-    krp: digits(query.krp, 4),
-    kse: digits(query.kse, 4),
-    kfs: digits(query.kfs, 4),
+    krp: code(query.krp),
+    kse: code(query.kse),
+    kfs: code(query.kfs),
     registeredFrom: DATE.test(registeredFrom) ? registeredFrom : "",
     registeredTo: DATE.test(registeredTo) ? registeredTo : "",
+    status: STATUSES.includes(status) ? status : "",
   };
 };
 
@@ -66,6 +76,15 @@ export const toDocumentFilters = (filters: CompanyFilters) => {
   }
   if (filters.registeredTo) {
     list.push({ registration_date: { $lte: filters.registeredTo } });
+  }
+  const status = filters.status || "active";
+  if (status === "active") {
+    list.push({
+      $or: [{ status: { $eq: "active" } }, { status: { $null: true } }],
+    });
+  }
+  if (status === "gone") {
+    list.push({ status: { $eq: "gone" } });
   }
   return list;
 };
@@ -99,6 +118,12 @@ export const toSqlConditions = (filters: CompanyFilters, alias: string) => {
   if (filters.registeredTo) {
     parts.push(`${alias}.registration_date <= ?::date`);
     bindings.push(filters.registeredTo);
+  }
+  if (filters.status === "active") {
+    parts.push(`(${alias}.status = 'active' OR ${alias}.status IS NULL)`);
+  }
+  if (filters.status === "gone") {
+    parts.push(`${alias}.status = 'gone'`);
   }
 
   return { sql: parts.join(" AND "), bindings };

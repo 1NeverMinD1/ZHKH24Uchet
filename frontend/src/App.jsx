@@ -14,6 +14,7 @@ const Address = lazy(() => import("./pages/address/Address"));
 const Director = lazy(() => import("./pages/director/Director"));
 const Search = lazy(() => import("./pages/search/Search"));
 const Companies = lazy(() => import("./pages/companies/Companies"));
+const Stats = lazy(() => import("./pages/stats/Stats"));
 const NotFound = lazy(() => import("./pages/notfound/NotFound"));
 
 const pages = (
@@ -27,6 +28,7 @@ const pages = (
     <Route path="director/:id" element={<Director />} />
     <Route path="search" element={<Search />} />
     <Route path="companies" element={<Companies />} />
+    <Route path="stats" element={<Stats />} />
     <Route path="*" element={<NotFound />} />
   </>
 );

@@ -38,7 +38,14 @@ const DATA_COLUMNS = [
 
 const UPDATE_COLUMNS = DATA_COLUMNS.filter((c) => c !== "bin");
 
-const SYSTEM_COLUMNS = ["id", "document_id", "created_at", "updated_at"];
+const SYSTEM_COLUMNS = [
+  "id",
+  "document_id",
+  "created_at",
+  "updated_at",
+  "status",
+  "last_seen",
+];
 
 if (!filePath) {
   console.error(

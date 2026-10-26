@@ -512,6 +512,7 @@ export interface ApiCompanyCompany extends Struct.CollectionTypeSchema {
     kse_code: Schema.Attribute.String;
     kse_name_kk: Schema.Attribute.Text;
     kse_name_ru: Schema.Attribute.Text;
+    last_seen: Schema.Attribute.Date;
     legal_address: Schema.Attribute.Text;
     legal_form: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
@@ -533,6 +534,7 @@ export interface ApiCompanyCompany extends Struct.CollectionTypeSchema {
     slug: Schema.Attribute.String;
     slug_code: Schema.Attribute.String;
     sort_name: Schema.Attribute.String;
+    status: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;

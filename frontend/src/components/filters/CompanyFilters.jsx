@@ -3,7 +3,13 @@ import client from "../../api/client";
 import { useLocale } from "../../i18n/context";
 import { pick } from "../../utils/localized";
 import { formatDate } from "../../utils/dates";
-import { FILTER_KEYS, KINDS, LEGAL_FORMS } from "../../utils/companyFilters";
+import {
+  FILTER_KEYS,
+  KINDS,
+  LEGAL_FORMS,
+  SORTS,
+} from "../../utils/companyFilters";
+import { useFilterOptions } from "../../utils/filterOptions";
 
 const ADVANCED_KEYS = [
   "oked",
@@ -14,33 +20,19 @@ const ADVANCED_KEYS = [
   "registered_to",
 ];
 
-let optionsRequest = null;
-
-const loadOptions = () => {
-  if (!optionsRequest) {
-    optionsRequest = client
-      .get("/company-filters")
-      .then(({ data }) => data.data)
-      .catch(() => {
-        optionsRequest = null;
-        return null;
-      });
-  }
-  return optionsRequest;
-};
-
 export default function CompanyFilters({ filters, update, onReset }) {
   const { locale, t } = useLocale();
   const [snapshots, setSnapshots] = useState([]);
   const [regions, setRegions] = useState([]);
   const [districts, setDistricts] = useState({ region: "", list: [] });
-  const [options, setOptions] = useState(null);
+  const options = useFilterOptions();
   const [expanded, setExpanded] = useState(() =>
     ADVANCED_KEYS.some((key) => filters[key]),
   );
 
   const changedKey = filters.changed || "";
   const historyMode = changedKey !== "";
+  const period = filters.mode === "period";
   const region = filters.region || "";
 
   useEffect(() => {
@@ -59,10 +51,6 @@ export default function CompanyFilters({ filters, update, onReset }) {
         if (!cancelled) setRegions(data.data);
       })
       .catch(() => {});
-
-    loadOptions().then((data) => {
-      if (!cancelled && data) setOptions(data);
-    });
 
     return () => {
       cancelled = true;
@@ -141,27 +129,36 @@ export default function CompanyFilters({ filters, update, onReset }) {
       <p className="filters__title">{t("history.filtersTitle")}</p>
 
       <div className="filters__row">
-        <label className="filters__check">
-          <input
-            type="checkbox"
-            checked={changedKey.split(",").includes("director")}
-            onChange={() => toggleKind("director")}
-          />
-          {t("history.directorChanged")}
-        </label>
-        <label className="filters__check">
-          <input
-            type="checkbox"
-            checked={changedKey.split(",").includes("address")}
-            onChange={() => toggleKind("address")}
-          />
-          {t("history.addressChanged")}
-        </label>
+        {KINDS.map((kind) => (
+          <label key={kind} className="filters__check">
+            <input
+              type="checkbox"
+              checked={changedKey.split(",").includes(kind)}
+              onChange={() => toggleKind(kind)}
+            />
+            {t(`history.kind.${kind}`)}
+          </label>
+        ))}
       </div>
 
       <div className="filters__row">
         <label className="filters__field">
-          {t("history.from")}
+          {t("filters.mode")}
+          <select
+            className="filters__select"
+            value={period ? "period" : "compare"}
+            disabled={!historyMode}
+            onChange={(e) =>
+              update({ mode: e.target.value === "period" ? "period" : "" })
+            }
+          >
+            <option value="compare">{t("filters.mode.compare")}</option>
+            <option value="period">{t("filters.mode.period")}</option>
+          </select>
+        </label>
+
+        <label className="filters__field">
+          {t(period ? "filters.periodFrom" : "filters.compareFrom")}
           <select
             className="filters__select"
             value={filters.from || defaultFrom}
@@ -177,7 +174,7 @@ export default function CompanyFilters({ filters, update, onReset }) {
         </label>
 
         <label className="filters__field">
-          {t("history.to")}
+          {t(period ? "filters.periodTo" : "filters.compareTo")}
           <select
             className="filters__select"
             value={filters.to || defaultTo}
@@ -244,6 +241,44 @@ export default function CompanyFilters({ filters, update, onReset }) {
                 </option>
               ),
             )}
+          </select>
+        </label>
+
+        <label className="filters__field">
+          {t("filters.status")}
+          <select
+            className="filters__select"
+            value={filters.status || ""}
+            onChange={(e) => update({ status: e.target.value })}
+          >
+            <option value="">{t("filters.status.active")}</option>
+            <option value="gone">{t("filters.status.gone")}</option>
+            <option value="all">{t("filters.status.all")}</option>
+          </select>
+        </label>
+
+        <label className="filters__field">
+          {t("filters.sort")}
+          <select
+            className="filters__select"
+            value={filters.sort || "name_asc"}
+            onChange={(e) =>
+              update({
+                sort: e.target.value === "name_asc" ? "" : e.target.value,
+              })
+            }
+          >
+            {SORTS.map((sort) => (
+              <option
+                key={sort}
+                value={sort}
+                disabled={
+                  historyMode && (sort === "newest" || sort === "oldest")
+                }
+              >
+                {t(`filters.sort.${sort}`)}
+              </option>
+            ))}
           </select>
         </label>
 

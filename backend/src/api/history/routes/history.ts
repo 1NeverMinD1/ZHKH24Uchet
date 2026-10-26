@@ -7,6 +7,11 @@ export default {
     },
     {
       method: "GET",
+      path: "/history/stats",
+      handler: "history.stats",
+    },
+    {
+      method: "GET",
       path: "/history/territories",
       handler: "history.territories",
     },

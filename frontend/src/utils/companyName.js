@@ -63,16 +63,31 @@ const SUFFIX_FORMS = byLength(FORMS_KK);
 
 const normalize = (value) => value.toUpperCase().replace(/I/g, "І");
 
+const tidy = (value) =>
+  value
+    .replace(/''/g, '"')
+    .replace(/^[^\p{L}\p{N}«"“(]+/u, "")
+    .replace(/[^\p{L}\p{N}»"”).]+$/u, "")
+    .replace(/^(["«“])[\s\-.,]+/u, "$1")
+    .replace(/[\s\-,]+(["»”])$/u, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+
 const stripStrayQuote = (name) => {
-  const count = (name.match(/"/g) || []).length;
-  if (count % 2 === 1 && name.endsWith('"')) {
-    return name.slice(0, -1).trimEnd();
-  }
+  const count = (name.match(/["«»“”]/g) || []).length;
+  if (count % 2 === 0) return name;
+  if (/^["«“]/.test(name)) return name.slice(1).trimStart();
+  if (/["»”]$/.test(name)) return name.slice(0, -1).trimEnd();
   return name;
 };
 
+const unwrap = (name) => {
+  const match = name.match(/^["«“]([^"«»“”]+)["»”]$/);
+  return match ? match[1].trim() : name;
+};
+
 export const shortName = (name = "") => {
-  const trimmed = stripStrayQuote(String(name).trim());
+  const trimmed = stripStrayQuote(tidy(String(name)));
   const upper = normalize(trimmed);
 
   for (const [full, abbr] of PREFIX_FORMS) {
@@ -89,5 +104,5 @@ export const shortName = (name = "") => {
     }
   }
 
-  return trimmed;
+  return unwrap(trimmed);
 };

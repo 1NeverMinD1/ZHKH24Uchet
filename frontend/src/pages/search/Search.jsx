@@ -4,6 +4,7 @@ import client from "../../api/client";
 import SEO from "../../components/seo/SEO";
 import CompanyLink from "../../components/company/CompanyLink";
 import CompanyFilters from "../../components/filters/CompanyFilters";
+import ChangeLines from "../../components/history/ChangeLines";
 import {
   FILTER_KEYS,
   listParams,
@@ -150,8 +151,13 @@ export default function Search() {
   const handleSubmit = (e) => {
     e.preventDefault();
     const value = String(new FormData(e.currentTarget).get("q") || "").trim();
-    if (!value) return;
     const next = new URLSearchParams(params);
+    if (!value) {
+      next.delete("q");
+      const query = next.toString();
+      navigate(query ? `/companies?${query}` : "/companies");
+      return;
+    }
     next.set("q", value);
     navigate(`/search?${next.toString()}`);
   };
@@ -168,12 +174,6 @@ export default function Search() {
         : item.nameRu || item.nameKk) || "",
     ) || item.bin;
 
-  const addressOf = (address) => {
-    if (!address) return t("history.nobody");
-    const place = locale === "kk" ? address.placeKk : address.place;
-    return [address.text, place].filter(Boolean).join(", ");
-  };
-
   const filterBlock = (
     <>
       <CompanyFilters
@@ -184,10 +184,15 @@ export default function Search() {
       {historyMode && result.key === key && result.meta?.base && (
         <div className="filters__summary">
           <p>
-            {t("history.compare", {
-              from: formatDate(result.meta.base.takenOn),
-              to: formatDate(result.meta.end?.takenOn),
-            })}
+            {t(
+              filters.mode === "period"
+                ? "filters.periodSummary"
+                : "history.compare",
+              {
+                from: formatDate(result.meta.base.takenOn),
+                to: formatDate(result.meta.end?.takenOn),
+              },
+            )}
           </p>
         </div>
       )}
@@ -255,9 +260,12 @@ export default function Search() {
           <div className="search__head">
             <h2 className="search__subtitle">{t("companies.title")}</h2>
             <p className="search__count">
-              {t("history.found", {
-                count: result.total.toLocaleString("ru-RU"),
-              })}
+              {t(
+                result.meta?.totalCapped
+                  ? "history.foundMore"
+                  : "history.found",
+                { count: result.total.toLocaleString("ru-RU") },
+              )}
             </p>
           </div>
         )}
@@ -270,28 +278,7 @@ export default function Search() {
                 <p className="change__meta">
                   {t("company.bin")} {item.bin}
                 </p>
-
-                {item.changes.includes("director") && (
-                  <p className="change__line">
-                    <span className="change__tag">{t("history.director")}</span>
-                    <span className="change__was">
-                      {item.director.from?.name || t("history.nobody")}
-                    </span>
-                    <span className="change__arrow">→</span>
-                    <span>{item.director.to?.name || t("history.nobody")}</span>
-                  </p>
-                )}
-
-                {item.changes.includes("address") && (
-                  <p className="change__line">
-                    <span className="change__tag">{t("history.address")}</span>
-                    <span className="change__was">
-                      {addressOf(item.address.from)}
-                    </span>
-                    <span className="change__arrow">→</span>
-                    <span>{addressOf(item.address.to)}</span>
-                  </p>
-                )}
+                <ChangeLines item={item} />
               </CompanyLink>
             ))}
 
@@ -311,6 +298,7 @@ export default function Search() {
                     <p className="search__item-meta">
                       {t("company.bin")} {item.bin}
                       {locality ? ` · ${locality}` : ""}
+                      {item.status === "gone" ? ` · ${t("company.gone")}` : ""}
                     </p>
                   </div>
                 </CompanyLink>

@@ -3,10 +3,12 @@ import client from "../../api/client";
 import { Link } from "../../i18n/router";
 import { useLocale } from "../../i18n/context";
 import { formatDate } from "../../utils/dates";
+import { codeLabel, useFilterOptions } from "../../utils/filterOptions";
 import "./_CompanyHistory.scss";
 
 export default function CompanyHistory({ slug, locked }) {
   const { locale, t } = useLocale();
+  const options = useFilterOptions();
   const [state, setState] = useState({
     slug: null,
     data: null,
@@ -58,8 +60,7 @@ export default function CompanyHistory({ slug, locked }) {
   }
 
   const { data } = state;
-  const directors = [...data.directors].reverse();
-  const addresses = [...data.addresses].reverse();
+  const nobody = t("history.nobody");
 
   const seen = (item, index) => {
     if (index === 0)
@@ -75,6 +76,57 @@ export default function CompanyHistory({ slug, locked }) {
   const placeOf = (item) =>
     locale === "kk" ? item.placeKk || item.place : item.place;
 
+  const timeline = (title, items, render) => (
+    <div key={title}>
+      <h3 className="history__subtitle">{title}</h3>
+      <ol className="history__list">
+        {[...items].reverse().map((item, index) => (
+          <li
+            key={`${item.id}-${item.from}`}
+            className={`history__item${index === 0 ? " history__item--current" : ""}`}
+          >
+            <p className="history__meta">
+              {index === 0 && (
+                <span className="history__badge">
+                  {t("history.card.current")}
+                </span>
+              )}
+              {seen(item, index)}
+            </p>
+            {render(item)}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+
+  const value = (text) => <p className="history__value">{text || nobody}</p>;
+
+  const codeBlock = (kind, items, dictionary) => [
+    t(`history.tag.${kind}`),
+    items,
+    (item) =>
+      value(
+        dictionary
+          ? codeLabel(options, dictionary, item.code, locale)
+          : item.code && item.code.split(",").join(", "),
+      ),
+  ];
+
+  const extras = [
+    [
+      t("history.tag.name"),
+      data.names,
+      (item) =>
+        value(locale === "kk" ? item.kk || item.ru : item.ru || item.kk),
+    ],
+    codeBlock("oked", data.oked, "oked"),
+    codeBlock("secondary_oked", data.secondaryOked, null),
+    codeBlock("krp", data.krp, "krp"),
+    codeBlock("kse", data.kse, "kse"),
+    codeBlock("kfs", data.kfs, "kfs"),
+  ].filter(([, items]) => items && items.length > 1);
+
   return (
     <section className="history">
       <h2 className="history__title">{t("history.card.title")}</h2>
@@ -86,76 +138,43 @@ export default function CompanyHistory({ slug, locked }) {
       </p>
 
       <div className="history__columns">
-        <div>
-          <h3 className="history__subtitle">{t("history.card.directors")}</h3>
-          <ol className="history__list">
-            {directors.map((item, index) => (
-              <li
-                key={`${item.id}-${item.from}`}
-                className={`history__item${index === 0 ? " history__item--current" : ""}`}
-              >
-                <p className="history__meta">
-                  {index === 0 && (
-                    <span className="history__badge">
-                      {t("history.card.current")}
-                    </span>
-                  )}
-                  {seen(item, index)}
-                </p>
-                <p className="history__value">
-                  {item.id && item.name ? (
-                    <Link
-                      to={`/director/${item.id}`}
-                      className="history__person"
-                    >
-                      {item.name}
-                    </Link>
-                  ) : (
-                    item.name || t("history.nobody")
-                  )}
-                </p>
-              </li>
-            ))}
-          </ol>
-        </div>
+        {timeline(t("history.card.directors"), data.directors, (item) => (
+          <p className="history__value">
+            {item.id && item.name ? (
+              <Link to={`/director/${item.id}`} className="history__person">
+                {item.name}
+              </Link>
+            ) : (
+              item.name || nobody
+            )}
+          </p>
+        ))}
 
-        <div>
-          <h3 className="history__subtitle">{t("history.card.addresses")}</h3>
-          <ol className="history__list">
-            {addresses.map((item, index) => (
-              <li
-                key={`${item.id}-${item.from}`}
-                className={`history__item${index === 0 ? " history__item--current" : ""}`}
-              >
-                <p className="history__meta">
-                  {index === 0 && (
-                    <span className="history__badge">
-                      {t("history.card.current")}
-                    </span>
-                  )}
-                  {seen(item, index)}
-                </p>
-                <p className="history__value">
-                  {item.text || t("history.nobody")}
-                </p>
-                {placeOf(item) && (
-                  <p className="history__place">{placeOf(item)}</p>
-                )}
-                {item.unit && (
-                  <p className="history__place">
-                    {t("history.card.unit", { unit: item.unit })}
-                  </p>
-                )}
-                {item.id && (
-                  <Link to={`/address/${item.id}`} className="history__link">
-                    {t("history.card.allCompanies")}
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ol>
-        </div>
+        {timeline(t("history.card.addresses"), data.addresses, (item) => (
+          <>
+            {value(item.text)}
+            {placeOf(item) && <p className="history__place">{placeOf(item)}</p>}
+            {item.unit && (
+              <p className="history__place">
+                {t("history.card.unit", { unit: item.unit })}
+              </p>
+            )}
+            {item.id && (
+              <Link to={`/address/${item.id}`} className="history__link">
+                {t("history.card.allCompanies")}
+              </Link>
+            )}
+          </>
+        ))}
       </div>
+
+      {extras.length > 0 && (
+        <div className="history__columns">
+          {extras.map(([title, items, render]) =>
+            timeline(title, items, render),
+          )}
+        </div>
+      )}
     </section>
   );
 }

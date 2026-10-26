@@ -7,6 +7,7 @@ export const translations = {
   ru: {
     "header.menu": "Меню",
     "header.companies": "Компании",
+    "header.stats": "Статистика",
     "header.registries": "Реестры",
     "header.about": "О сервисе",
     "header.soon": "Скоро",
@@ -77,6 +78,7 @@ export const translations = {
   kk: {
     "header.menu": "Мәзір",
     "header.companies": "Компаниялар",
+    "header.stats": "Статистика",
     "header.registries": "Тізілімдер",
     "header.about": "Сервис туралы",
     "header.soon": "Жақында",

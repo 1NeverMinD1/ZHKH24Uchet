@@ -2,6 +2,7 @@ import { factories } from "@strapi/strapi";
 import {
   parseCompanyFilters,
   toDocumentFilters,
+  toSqlConditions,
 } from "../../../utils/company-filters";
 
 const RESTRICT_GUESTS = false;
@@ -10,6 +11,8 @@ const PUBLIC_FIELDS: any = [
   "bin",
   "slug",
   "legal_form",
+  "status",
+  "last_seen",
   "name_ru",
   "name_kk",
   "oked_code",
@@ -60,6 +63,20 @@ const codeOf = (value: string) => {
 
 const strip = ({ id, documentId, ...rest }: any) => rest;
 
+const SORTS: Record<string, any> = {
+  name_asc: "sort_name:asc",
+  name_desc: "sort_name:desc",
+  newest: ["registration_date:desc", "sort_name:asc"],
+  oldest: ["registration_date:asc", "sort_name:asc"],
+};
+
+const sortOf = (ctx: any) => {
+  const key = String(ctx.query.sort || "");
+  return SORTS[key] ? key : "";
+};
+
+const byDate = (key: string) => key === "newest" || key === "oldest";
+
 const escapeXml = (value: string) =>
   value
     .replace(/&/g, "&amp;")
@@ -80,6 +97,19 @@ const cached = async (key: string, build: () => Promise<string>) => {
 };
 
 let filtersCache: { at: number; data: any } | null = null;
+
+const COUNT_TTL = 10 * 60 * 1000;
+const COUNT_CAP = 100000;
+const counts = new Map<string, { at: number; total: number }>();
+
+const cachedCount = async (key: string, run: () => Promise<number>) => {
+  const hit = counts.get(key);
+  if (hit && Date.now() - hit.at < COUNT_TTL) return hit.total;
+  const total = await run();
+  if (counts.size > 1000) counts.clear();
+  counts.set(key, { at: Date.now(), total });
+  return total;
+};
 
 const urlset = (urls: string[]) =>
   XML_HEAD +
@@ -106,10 +136,59 @@ export default factories.createCoreController(
                 max(${column}_name_kk) AS name_kk,
                 count(*)::int AS count
            FROM companies
-          WHERE ${column}_code IS NOT NULL
+                    WHERE ${column}_code IS NOT NULL
+            AND status IS DISTINCT FROM 'gone'
           GROUP BY ${column}_code
           ORDER BY ${column}_code`,
       );
+
+    const countCapped = async (parsed: any, q: string, dated: boolean) => {
+      const where: string[] = [];
+      const bindings: any[] = [];
+
+      if (q) {
+        const pattern = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
+        if (/^\d+$/.test(q)) {
+          where.push("c.bin LIKE ?");
+          bindings.push(pattern);
+        } else {
+          where.push("(c.name_ru ILIKE ? OR c.name_kk ILIKE ?)");
+          bindings.push(pattern, pattern);
+        }
+      }
+
+      if (parsed.prefix) {
+        where.push("c.kato LIKE ?");
+        bindings.push(`${parsed.prefix}%`);
+      }
+
+      const company = toSqlConditions(
+        { ...parsed, status: parsed.status || "active" },
+        "c",
+      );
+      if (company.sql) {
+        where.push(company.sql);
+        bindings.push(...company.bindings);
+      }
+
+      if (dated) where.push("c.registration_date IS NOT NULL");
+
+      const total = await cachedCount(
+        JSON.stringify({ parsed, q, dated }),
+        async () => {
+          const result = await strapi.db.connection.raw(
+            `SELECT count(*)::int AS total
+               FROM (SELECT 1 FROM companies c
+                     ${where.length > 0 ? `WHERE ${where.join(" AND ")}` : ""}
+                     LIMIT ${COUNT_CAP + 1}) x`,
+            bindings,
+          );
+          return result.rows[0].total;
+        },
+      );
+
+      return { total: Math.min(total, COUNT_CAP), capped: total > COUNT_CAP };
+    };
 
     return {
       async search(ctx: any) {
@@ -133,27 +212,38 @@ export default factories.createCoreController(
               ],
             };
 
-        const filters: any = {
-          $and: [
-            textFilter,
-            ...toDocumentFilters(parseCompanyFilters(ctx.query)),
-          ],
-        };
+        const parsed = parseCompanyFilters(ctx.query);
+        const sortKey = sortOf(ctx);
+        const conditions = [textFilter, ...toDocumentFilters(parsed)];
+        if (byDate(sortKey)) {
+          conditions.push({ registration_date: { $notNull: true } });
+        }
+        const filters: any = { $and: conditions };
 
-        const [items, total] = await Promise.all([
+        const [items, count] = await Promise.all([
           strapi.documents("api::company.company").findMany({
             filters,
             fields: PUBLIC_FIELDS,
-            sort: byBin ? "bin:asc" : "sort_name:asc",
+            sort: sortKey
+              ? SORTS[sortKey]
+              : byBin
+                ? "bin:asc"
+                : "sort_name:asc",
             start: (page - 1) * PAGE_SIZE,
             limit: PAGE_SIZE,
           }),
-          strapi.documents("api::company.company").count({ filters }),
+          countCapped(parsed, q, byDate(sortKey)),
         ]);
 
         ctx.body = {
           data: items.map(strip),
-          meta: { page, pageSize: PAGE_SIZE, maxPage: MAX_PAGE, total },
+          meta: {
+            page,
+            pageSize: PAGE_SIZE,
+            maxPage: MAX_PAGE,
+            total: count.total,
+            totalCapped: count.capped,
+          },
         };
       },
 
@@ -163,23 +253,34 @@ export default factories.createCoreController(
           return ctx.badRequest("Слишком далёкая страница");
         }
 
-        const conditions = toDocumentFilters(parseCompanyFilters(ctx.query));
+        const parsed = parseCompanyFilters(ctx.query);
+        const sortKey = sortOf(ctx);
+        const conditions = toDocumentFilters(parsed);
+        if (byDate(sortKey)) {
+          conditions.push({ registration_date: { $notNull: true } });
+        }
         const filters: any = conditions.length > 0 ? { $and: conditions } : {};
 
-        const [items, total] = await Promise.all([
+        const [items, count] = await Promise.all([
           strapi.documents("api::company.company").findMany({
             filters,
             fields: PUBLIC_FIELDS,
-            sort: "sort_name:asc",
+            sort: SORTS[sortKey || "name_asc"],
             start: (page - 1) * PAGE_SIZE,
             limit: PAGE_SIZE,
           }),
-          strapi.documents("api::company.company").count({ filters }),
+          countCapped(parsed, "", byDate(sortKey)),
         ]);
 
         ctx.body = {
           data: items.map(strip),
-          meta: { page, pageSize: PAGE_SIZE, maxPage: MAX_PAGE, total },
+          meta: {
+            page,
+            pageSize: PAGE_SIZE,
+            maxPage: MAX_PAGE,
+            total: count.total,
+            totalCapped: count.capped,
+          },
         };
       },
 
@@ -189,7 +290,8 @@ export default factories.createCoreController(
             raw(
               `SELECT legal_form AS code, count(*)::int AS count
                  FROM companies
-                WHERE legal_form IS NOT NULL
+                                WHERE legal_form IS NOT NULL
+                  AND status IS DISTINCT FROM 'gone'
                 GROUP BY legal_form
                 ORDER BY count(*) DESC`,
             ),
@@ -262,7 +364,10 @@ export default factories.createCoreController(
 
       async sitemapStatic(ctx: any) {
         const base = siteUrl();
-        sendXml(ctx, urlset([`${base}/`, `${base}/companies`]));
+        sendXml(
+          ctx,
+          urlset([`${base}/`, `${base}/companies`, `${base}/stats`]),
+        );
       },
 
       async sitemapCompanies(ctx: any) {

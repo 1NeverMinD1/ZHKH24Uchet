@@ -42,6 +42,8 @@
     "slug": { "type": "string" },
     "slug_code": { "type": "string" },
     "legal_form": { "type": "string" },
-    "sort_name": { "type": "string" }
+    "sort_name": { "type": "string" },
+    "status": { "type": "string" },
+    "last_seen": { "type": "date" }
   }
 }

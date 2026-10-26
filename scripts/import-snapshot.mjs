@@ -65,7 +65,15 @@ const COLUMNS = [
   "addr_text",
   "unit",
   "kato",
+  "oked_code",
+  "secondary_oked",
+  "krp_code",
+  "kse_code",
+  "kfs_code",
 ];
+
+const okedList = (value) =>
+  [...new Set(value.match(/\d{5}/g) || [])].sort().join(",");
 
 const places = new Map();
 
@@ -100,6 +108,11 @@ const toRow = (cells) => {
     address.text,
     address.unit,
     kato,
+    clean(cells[5]),
+    okedList(clean(cells[8])),
+    clean(cells[9]),
+    clean(cells[12]),
+    clean(cells[15]),
   ];
 };
 
@@ -337,8 +350,11 @@ try {
   log(`Названия добавлены: ${newNames.rowCount}. Запись состояний компаний...`);
 
   await client.query(
-    `INSERT INTO company_states (snapshot_id, bin, name_id, director_id, address_id, unit)
-     SELECT $1, i.bin, n.id, d.id, a.id, NULLIF(i.unit, '')
+    `INSERT INTO company_states (snapshot_id, bin, name_id, director_id, address_id, unit,
+                                 oked_code, secondary_oked, krp_code, kse_code, kfs_code)
+     SELECT $1, i.bin, n.id, d.id, a.id, NULLIF(i.unit, ''),
+            NULLIF(i.oked_code, ''), NULLIF(i.secondary_oked, ''),
+            NULLIF(i.krp_code, ''), NULLIF(i.kse_code, ''), NULLIF(i.kfs_code, '')
        FROM (SELECT DISTINCT ON (bin) * FROM hx_import ORDER BY bin) i
        LEFT JOIN company_names n ON n.bin = i.bin AND n.name_key = i.name_key
        LEFT JOIN directors d ON d.name_key = i.director_key
