@@ -12,6 +12,7 @@ const Profile = lazy(() => import("./pages/profile/Profile"));
 const Company = lazy(() => import("./pages/company/Company"));
 const Address = lazy(() => import("./pages/address/Address"));
 const Director = lazy(() => import("./pages/director/Director"));
+const Unit = lazy(() => import("./pages/unit/Unit"));
 const Search = lazy(() => import("./pages/search/Search"));
 const Companies = lazy(() => import("./pages/companies/Companies"));
 const Stats = lazy(() => import("./pages/stats/Stats"));
@@ -26,6 +27,7 @@ const pages = (
     <Route path="company/:slug" element={<Company />} />
     <Route path="address/:id" element={<Address />} />
     <Route path="director/:id" element={<Director />} />
+    <Route path="unit/:id" element={<Unit />} />
     <Route path="search" element={<Search />} />
     <Route path="companies" element={<Companies />} />
     <Route path="stats" element={<Stats />} />

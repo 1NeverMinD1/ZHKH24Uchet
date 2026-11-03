@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import client from "../../api/client";
 import SEO from "../../components/seo/SEO";
 import Breadcrumbs from "../../components/breadcrumbs/Breadcrumbs";
@@ -8,15 +8,20 @@ import NotFound from "../notfound/NotFound";
 import { useLocale } from "../../i18n/context";
 import { shortName } from "../../utils/companyName";
 import { formatDate } from "../../utils/dates";
+import { unitName } from "../../utils/units";
 import CompaniesChart from "../../components/history/CompaniesChart";
 import "../search/_Search.scss";
 import "./_Address.scss";
+
+const UNITS_PREVIEW = 12;
 
 export default function Address() {
   const { id } = useParams();
   const { locale, t } = useLocale();
   const validId = /^\d+$/.test(id);
   const [date, setDate] = useState("");
+  const [unit, setUnit] = useState("");
+  const [showAllUnits, setShowAllUnits] = useState(false);
   const [data, setData] = useState({
     key: null,
     info: null,
@@ -27,15 +32,25 @@ export default function Address() {
   });
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const key = `${id}|${date}`;
+  const key = `${id}|${date}|${unit}`;
+
+  const paramsOf = (extra = {}) => {
+    const params = { ...extra };
+    if (date) params.date = date;
+    if (unit) params.unit = unit;
+    return params;
+  };
 
   useEffect(() => {
     if (!validId) return;
     let cancelled = false;
-    const requestKey = `${id}|${date}`;
+    const requestKey = `${id}|${date}|${unit}`;
+    const params = {};
+    if (date) params.date = date;
+    if (unit) params.unit = unit;
 
     client
-      .get(`/history/address/${id}`, { params: date ? { date } : {} })
+      .get(`/history/address/${id}`, { params })
       .then(({ data: response }) => {
         if (cancelled) return;
         const info = response.data;
@@ -63,7 +78,7 @@ export default function Address() {
     return () => {
       cancelled = true;
     };
-  }, [id, date, validId]);
+  }, [id, date, unit, validId]);
 
   const handleLoadMore = async () => {
     const page = data.page + 1;
@@ -71,7 +86,7 @@ export default function Address() {
 
     try {
       const { data: response } = await client.get(`/history/address/${id}`, {
-        params: date ? { date, page } : { page },
+        params: paramsOf({ page }),
       });
       setData((previous) =>
         previous.key === key
@@ -131,6 +146,10 @@ export default function Address() {
   const canLoadMore =
     data.companies.length < data.total &&
     data.page < (info.maxPage ?? Infinity);
+  const units = info.units || [];
+  const shownUnits = showAllUnits ? units : units.slice(0, UNITS_PREVIEW);
+  const selectedMissing =
+    unit && unit !== "none" && !units.some((item) => String(item.id) === unit);
 
   const crumbs = [
     { name: t("breadcrumbs.home"), path: "/" },
@@ -186,6 +205,56 @@ export default function Address() {
           )}
         </div>
 
+        {units.length > 0 && (
+          <div className="address__card">
+            <h2 className="address__subtitle">{t("address.unitsTitle")}</h2>
+            <p className="address__count">
+              {t("address.unitsCount", {
+                date: formatDate(info.snapshot?.takenOn || selected),
+                count: info.unitsTotal.toLocaleString("ru-RU"),
+              })}
+            </p>
+
+            <div className="search__list">
+              {shownUnits.map((item) => (
+                <Link
+                  key={item.id}
+                  to={`/${locale}/unit/${item.id}`}
+                  className="search__item"
+                >
+                  <div>
+                    <p className="search__item-name">{unitName(item, t)}</p>
+                    <p className="search__item-meta">
+                      {t("address.unitCompanies", { count: item.companies })}
+                      {item.number && item.floor
+                        ? ` · ${t("unit.floor", { floor: item.floor })}`
+                        : ""}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            {showAllUnits && info.unitsTotal > units.length && (
+              <p className="address__count">
+                {t("address.unitsLimited", {
+                  shown: units.length,
+                  total: info.unitsTotal,
+                })}
+              </p>
+            )}
+
+            {units.length > UNITS_PREVIEW && (
+              <button
+                className="search__more"
+                onClick={() => setShowAllUnits((value) => !value)}
+              >
+                {showAllUnits ? t("address.unitsLess") : t("address.unitsAll")}
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="address__card">
           <div className="address__head">
             <h2 className="address__subtitle">{t("address.listTitle")}</h2>
@@ -203,6 +272,27 @@ export default function Address() {
                 ))}
               </select>
             </label>
+            {(units.length > 0 || info.withoutUnit > 0) && (
+              <label className="address__select">
+                {t("address.unitFilter")}
+                <select value={unit} onChange={(e) => setUnit(e.target.value)}>
+                  <option value="">{t("address.unitFilterAll")}</option>
+                  {info.withoutUnit > 0 && (
+                    <option value="none">
+                      {t("address.unitFilterNone", {
+                        count: info.withoutUnit,
+                      })}
+                    </option>
+                  )}
+                  {selectedMissing && <option value={unit}>—</option>}
+                  {units.map((item) => (
+                    <option key={item.id} value={String(item.id)}>
+                      {unitName(item, t)} ({item.companies})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
 
           <p className="address__count">

@@ -22,6 +22,12 @@ export default {
     },
     {
       method: "GET",
+      path: "/history/warm",
+      handler: "history.warm",
+      config: { auth: false },
+    },
+    {
+      method: "GET",
       path: "/history/company/:slug",
       handler: "history.company",
     },
@@ -29,6 +35,11 @@ export default {
       method: "GET",
       path: "/history/address/:id",
       handler: "history.address",
+    },
+    {
+      method: "GET",
+      path: "/history/unit/:id",
+      handler: "history.unit",
     },
     {
       method: "GET",

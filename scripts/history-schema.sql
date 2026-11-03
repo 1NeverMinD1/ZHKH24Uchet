@@ -39,19 +39,6 @@ CREATE TABLE IF NOT EXISTS addresses (
 
 CREATE INDEX IF NOT EXISTS addresses_territory_idx ON addresses (territory_id);
 
-CREATE TABLE IF NOT EXISTS company_states (
-  snapshot_id integer NOT NULL REFERENCES snapshots (id) ON DELETE CASCADE,
-  bin varchar(12) NOT NULL,
-  director_id integer REFERENCES directors (id),
-  address_id integer REFERENCES addresses (id),
-  unit text,
-  PRIMARY KEY (snapshot_id, bin)
-);
-
-CREATE INDEX IF NOT EXISTS company_states_bin_idx ON company_states (bin, snapshot_id);
-CREATE INDEX IF NOT EXISTS company_states_address_idx ON company_states (address_id, snapshot_id);
-CREATE INDEX IF NOT EXISTS company_states_director_idx ON company_states (director_id, snapshot_id);
-
 CREATE TABLE IF NOT EXISTS company_names (
   id serial PRIMARY KEY,
   bin varchar(12) NOT NULL,
@@ -60,14 +47,6 @@ CREATE TABLE IF NOT EXISTS company_names (
   name_kk text,
   UNIQUE (bin, name_key)
 );
-
-ALTER TABLE company_states ADD COLUMN IF NOT EXISTS name_id integer REFERENCES company_names (id);
-
-ALTER TABLE company_states ADD COLUMN IF NOT EXISTS oked_code text;
-ALTER TABLE company_states ADD COLUMN IF NOT EXISTS secondary_oked text;
-ALTER TABLE company_states ADD COLUMN IF NOT EXISTS krp_code text;
-ALTER TABLE company_states ADD COLUMN IF NOT EXISTS kse_code text;
-ALTER TABLE company_states ADD COLUMN IF NOT EXISTS kfs_code text;
 
 CREATE TABLE IF NOT EXISTS snapshot_diff_pairs (
   base_id integer NOT NULL REFERENCES snapshots (id) ON DELETE CASCADE,
@@ -118,3 +97,70 @@ CREATE TABLE IF NOT EXISTS snapshot_stats (
   by_form jsonb,
   by_region jsonb
 );
+
+CREATE TABLE IF NOT EXISTS units (
+  id serial PRIMARY KEY,
+  address_id integer NOT NULL REFERENCES addresses (id),
+  unit_key text NOT NULL,
+  kind text,
+  number text,
+  floor text,
+  label text NOT NULL,
+  UNIQUE (address_id, unit_key)
+);
+
+ALTER TABLE snapshots ADD COLUMN IF NOT EXISTS has_codes boolean NOT NULL DEFAULT true;
+
+CREATE TABLE IF NOT EXISTS company_periods (
+  id bigserial PRIMARY KEY,
+  bin varchar(12) NOT NULL,
+  from_on date NOT NULL,
+  to_on date NOT NULL,
+  name_id integer REFERENCES company_names (id),
+  director_id integer REFERENCES directors (id),
+  address_id integer REFERENCES addresses (id),
+  unit_id integer REFERENCES units (id),
+  unit text,
+  oked_code text,
+  secondary_oked text,
+  krp_code text,
+  kse_code text,
+  kfs_code text,
+  CHECK (from_on <= to_on)
+);
+
+CREATE INDEX IF NOT EXISTS company_periods_bin_idx ON company_periods (bin, from_on);
+CREATE INDEX IF NOT EXISTS company_periods_to_idx ON company_periods (to_on);
+CREATE INDEX IF NOT EXISTS company_periods_from_idx ON company_periods (from_on);
+CREATE INDEX IF NOT EXISTS company_periods_address_idx ON company_periods (address_id, from_on, to_on);
+CREATE INDEX IF NOT EXISTS company_periods_unit_idx ON company_periods (unit_id, from_on, to_on);
+CREATE INDEX IF NOT EXISTS company_periods_director_idx ON company_periods (director_id, from_on, to_on);
+
+CREATE TABLE IF NOT EXISTS period_pairs (
+  id serial PRIMARY KEY,
+  base_id integer NOT NULL REFERENCES snapshots (id) ON DELETE CASCADE,
+  end_id integer NOT NULL REFERENCES snapshots (id) ON DELETE CASCADE,
+  used_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (base_id, end_id)
+);
+
+CREATE TABLE IF NOT EXISTS period_summary (
+  period_id integer NOT NULL REFERENCES period_pairs (id) ON DELETE CASCADE,
+  bin varchar(12) NOT NULL,
+  kato varchar(9),
+  name_ru text,
+  changes text[] NOT NULL,
+  first_base integer NOT NULL,
+  first_end integer NOT NULL,
+  last_base integer NOT NULL,
+  last_end integer NOT NULL,
+  sort_pos integer NOT NULL,
+  PRIMARY KEY (period_id, bin)
+);
+
+ALTER TABLE period_summary DROP COLUMN IF EXISTS name_kk;
+ALTER TABLE period_summary ADD COLUMN IF NOT EXISTS sort_pos integer;
+DROP INDEX IF EXISTS period_summary_name_idx;
+
+CREATE INDEX IF NOT EXISTS period_summary_sort_idx ON period_summary (period_id, sort_pos);
+CREATE INDEX IF NOT EXISTS period_summary_changes_idx ON period_summary USING gin (changes);

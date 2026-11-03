@@ -24,7 +24,10 @@ export default {
         fetch(`${base}/company-list?page=1`),
         fetch(`${base}/company-list?status=all&page=1`),
         fetch(`${base}/company-filters`),
-      ]).catch(() => {});
+      ])
+        .catch(() => {})
+        .then(() => fetch(`${base}/history/warm`))
+        .catch(() => {});
     }, 5000);
   },
 };

@@ -40,6 +40,8 @@ export const historyMessages = {
     "history.card.unit": "Офис, квартира: {unit}",
     "history.card.allCompanies": "Все компании по этому адресу",
     "history.card.locked": "История доступна после регистрации",
+    "history.card.show": "Показать историю",
+    "history.card.hide": "Скрыть историю",
 
     "address.seoTitle": "Адрес: {address}",
     "address.seoDescription":
@@ -55,6 +57,32 @@ export const historyMessages = {
     "address.notFound": "Адрес не найден",
     "address.notFoundText": "Такого адреса нет в нашей базе.",
     "address.loadError": "Не удалось загрузить данные",
+    "address.unitsTitle": "Помещения в здании",
+    "address.unitsCount": "Помещений с компаниями на {date}: {count}",
+    "address.unitsLimited":
+      "Показаны {shown} из {total} помещений с наибольшим числом компаний",
+    "address.unitsAll": "Показать все",
+    "address.unitsLess": "Свернуть",
+    "address.unitCompanies": "Компаний: {count}",
+    "address.unitFilter": "Помещение",
+    "address.unitFilterAll": "Все",
+    "address.unitFilterNone": "Без помещения ({count})",
+
+    "unit.kindLiving": "Квартира {number}",
+    "unit.kindOther": "Нежилое помещение {number}",
+    "unit.floorOnly": "Этаж {floor}",
+    "unit.floor": "этаж {floor}",
+    "unit.title": "Помещение",
+    "unit.seoTitle": "{unit}, {address}",
+    "unit.seoDescription":
+      "Компании, зарегистрированные в помещении «{unit}» по адресу {address}: число по датам и список.",
+    "unit.listTitle": "Компании в этом помещении",
+    "unit.current": "Сейчас: {count}",
+    "unit.total": "Всего за период данных: {total}",
+    "unit.past": "Ранее",
+    "unit.notFound": "Помещение не найдено",
+    "unit.notFoundText": "Такого помещения нет в нашей базе.",
+    "unit.loadError": "Не удалось загрузить данные",
   },
   kk: {
     "history.filtersTitle": "Сүзгілер",
@@ -97,6 +125,8 @@ export const historyMessages = {
     "history.card.unit": "Кеңсе, пәтер: {unit}",
     "history.card.allCompanies": "Осы мекенжайдағы барлық компаниялар",
     "history.card.locked": "Тарих тіркелгеннен кейін қолжетімді",
+    "history.card.show": "Тарихты көрсету",
+    "history.card.hide": "Тарихты жасыру",
 
     "address.seoTitle": "Мекенжай: {address}",
     "address.seoDescription":
@@ -112,5 +142,31 @@ export const historyMessages = {
     "address.notFound": "Мекенжай табылмады",
     "address.notFoundText": "Біздің базада мұндай мекенжай жоқ.",
     "address.loadError": "Деректерді жүктеу мүмкін болмады",
+    "address.unitsTitle": "Ғимараттағы үй-жайлар",
+    "address.unitsCount": "{date} күнгі компаниялары бар үй-жайлар: {count}",
+    "address.unitsLimited":
+      "Компаниясы ең көп {total} үй-жайдың {shown}-і көрсетілген",
+    "address.unitsAll": "Барлығын көрсету",
+    "address.unitsLess": "Жасыру",
+    "address.unitCompanies": "Компаниялар: {count}",
+    "address.unitFilter": "Үй-жай",
+    "address.unitFilterAll": "Барлығы",
+    "address.unitFilterNone": "Үй-жайсыз ({count})",
+
+    "unit.kindLiving": "{number} пәтер",
+    "unit.kindOther": "{number} тұрғын емес үй-жай",
+    "unit.floorOnly": "{floor} қабат",
+    "unit.floor": "{floor} қабат",
+    "unit.title": "Үй-жай",
+    "unit.seoTitle": "{unit}, {address}",
+    "unit.seoDescription":
+      "{address} мекенжайындағы «{unit}» үй-жайында тіркелген компаниялар: күндер бойынша саны және тізімі.",
+    "unit.listTitle": "Осы үй-жайдағы компаниялар",
+    "unit.current": "Қазір: {count}",
+    "unit.total": "Деректер кезеңінде барлығы: {total}",
+    "unit.past": "Бұрын",
+    "unit.notFound": "Үй-жай табылмады",
+    "unit.notFoundText": "Біздің базада мұндай үй-жай жоқ.",
+    "unit.loadError": "Деректерді жүктеу мүмкін болмады",
   },
 };

@@ -63,6 +63,86 @@ const splitStreet = (street) => {
   return { type: "", name: upper };
 };
 
+const UNIT_WORD =
+  /^(КВАРТИРА|КВ|НЕЖИЛОЕ ПОМЕЩЕНИЕ|Н\.?\s?П|ОФИС|ОФ|КАБИНЕТ|КАБ|ПОМЕЩЕНИЕ|ПОМ|КОМНАТА|КОМН|КОМ|БУТИК|СКЛАД|ВП)\.?(?![\p{L}])[\s\-]*/u;
+
+const UNIT_TAIL =
+  /\s+(?:КВАРТИРА|КВ|ОФИС|ОФ|КАБИНЕТ|КАБ|ПОМЕЩЕНИЕ|ПОМ|КОМНАТА|БУТИК)\.?$/u;
+
+const RESIDENTIAL = new Set(["КВАРТИРА", "КВ"]);
+
+const UNIT_FLOOR = /(\d+)\s*-?\s*(?:Й\s*)?ЭТАЖ|ЭТАЖ\s*(\d+)/u;
+
+const UNIT_BLOCK = /(?:КОРПУС|КОРП)\.?\s*([\p{L}\d/\-]+)/u;
+
+const UNIT_NUMBER =
+  /^(?:([\p{L}]{1,3})\s?[\-/]?\s?)?(\d+)\s?(?:[/\-]\s?)?([\p{L}])?(?:\s?[/\-.]\s?(\d+)\s?(?:[/\-]\s?)?([\p{L}])?)?\.?$/u;
+
+const stripZeros = (value) => value.replace(/^0+(?=\d)/, "");
+
+const normalizeNumber = (value) => {
+  const match = squash(value).replace(UNIT_TAIL, "").match(UNIT_NUMBER);
+  if (!match) return "";
+  const head = (match[1] || "") + stripZeros(match[2]) + (match[3] || "");
+  if (head === "0" && !match[4]) return "";
+  return match[4] ? `${head}/${stripZeros(match[4])}${match[5] || ""}` : head;
+};
+
+export const parseUnit = (raw) => {
+  const text = squash(raw || "");
+  const result = { key: "", kind: "", number: "", floor: "", block: "", text };
+  if (!text) return result;
+
+  const source = unify(text)
+    .replace(/["“”«»'`]/g, "")
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/№/g, " ")
+    .replace(/\\/g, "/");
+
+  let kind = "";
+  for (const chunk of source.split(/\s*[,;]\s*|\s+И\s+/)) {
+    let part = squash(chunk);
+
+    const block = part.match(UNIT_BLOCK);
+    if (block) {
+      if (!result.block) result.block = block[1];
+      part = squash(part.replace(UNIT_BLOCK, " "));
+    }
+
+    const floor = part.match(UNIT_FLOOR);
+    if (floor) {
+      if (!result.floor) result.floor = stripZeros(floor[1] ?? floor[2]);
+      part = squash(part.replace(UNIT_FLOOR, " "));
+    }
+
+    const words = [];
+    let word;
+    while ((word = part.match(UNIT_WORD))) {
+      words.push(word[1].replace(/[.\s]/g, ""));
+      part = part.slice(word[0].length);
+    }
+    if (words.length) {
+      kind = words.some((item) => !RESIDENTIAL.has(item)) ? "Н" : "Ж";
+    }
+
+    if (!result.number) {
+      const number = normalizeNumber(part);
+      if (number) {
+        result.number = number;
+        result.kind = kind || "Н";
+      }
+    }
+  }
+
+  result.key = result.number
+    ? `${result.kind}|${result.number}`
+    : result.floor
+      ? `ЭТАЖ|${result.floor}`
+      : "";
+
+  return result;
+};
+
 const empty = { type: "", street: "", house: "", unit: "", text: "", key: "" };
 
 export const parseAddress = (raw, kato) => {

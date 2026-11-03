@@ -7,6 +7,7 @@ const RESTRICT_GUESTS = false;
 
 const PAGE_SIZE = 20;
 const MAX_PAGE = 50;
+const UNITS_LIMIT = 300;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const KINDS = [
@@ -87,13 +88,13 @@ const periods = (items: any[], idKey: string, build: (item: any) => any) => {
   for (const item of items) {
     const last = result[result.length - 1];
     if (last && last.id === item[idKey]) {
-      last.to = item.taken_on;
+      last.to = item.to_on;
       continue;
     }
     result.push({
       id: item[idKey],
-      from: item.taken_on,
-      to: item.taken_on,
+      from: item.from_on,
+      to: item.to_on,
       ...build(item),
     });
   }
@@ -119,10 +120,53 @@ const ensureDiff = async (baseId: number, endId: number) => {
     );
     if (again.rows.length > 0) return;
 
+    const found = await trx.raw(
+      "SELECT id, taken_on::text AS taken_on, has_codes FROM snapshots WHERE id IN (?, ?)",
+      [baseId, endId],
+    );
+    const base = found.rows.find((row: any) => row.id === baseId);
+    const end = found.rows.find((row: any) => row.id === endId);
+    if (!base || !end) return;
+    const codes = Boolean(base.has_codes && end.has_codes);
+
     await trx.raw(
       "INSERT INTO snapshot_diff_pairs (base_id, end_id) VALUES (?, ?)",
       [baseId, endId],
     );
+
+    const between = await trx.raw(
+      `SELECT count(*)::int AS count FROM snapshots
+        WHERE NOT is_test AND taken_on > ?::date AND taken_on < ?::date`,
+      [base.taken_on, end.taken_on],
+    );
+    const adjacent =
+      base.taken_on < end.taken_on && between.rows[0].count === 0;
+
+    if (adjacent) {
+      await trx.raw(
+        `CREATE TEMP TABLE diff_base ON COMMIT DROP AS
+         SELECT * FROM company_periods WHERE to_on = ?::date`,
+        [base.taken_on],
+      );
+      await trx.raw(
+        `CREATE TEMP TABLE diff_end ON COMMIT DROP AS
+         SELECT * FROM company_periods WHERE from_on = ?::date`,
+        [end.taken_on],
+      );
+    } else {
+      await trx.raw(
+        `CREATE TEMP TABLE diff_base ON COMMIT DROP AS
+         SELECT * FROM company_periods WHERE from_on <= ?::date AND to_on >= ?::date`,
+        [base.taken_on, base.taken_on],
+      );
+      await trx.raw(
+        `CREATE TEMP TABLE diff_end ON COMMIT DROP AS
+         SELECT * FROM company_periods WHERE from_on <= ?::date AND to_on >= ?::date`,
+        [end.taken_on, end.taken_on],
+      );
+    }
+    await trx.raw("CREATE INDEX ON diff_base (bin)");
+    await trx.raw("CREATE INDEX ON diff_end (bin)");
 
     await trx.raw(
       `INSERT INTO snapshot_diffs
@@ -142,20 +186,19 @@ const ensureDiff = async (baseId: number, endId: number) => {
                 b.kse_code AS kse_from, e.kse_code AS kse_to,
                 b.kfs_code AS kfs_from, e.kfs_code AS kfs_to,
                 array_remove(ARRAY[
-                  CASE WHEN split_part(nb.name_key, '|', 1) IS DISTINCT FROM split_part(ne.name_key, '|', 1) THEN 'name' END,
+                  CASE WHEN b.name_id IS DISTINCT FROM e.name_id THEN 'name' END,
                   CASE WHEN b.director_id IS DISTINCT FROM e.director_id THEN 'director' END,
                   CASE WHEN b.address_id IS DISTINCT FROM e.address_id THEN 'address' END,
                   CASE WHEN b.oked_code IS DISTINCT FROM e.oked_code THEN 'oked' END,
                   CASE WHEN b.secondary_oked IS DISTINCT FROM e.secondary_oked THEN 'secondary_oked' END,
                   CASE WHEN b.krp_code IS DISTINCT FROM e.krp_code THEN 'krp' END,
-                  CASE WHEN b.kse_code IS DISTINCT FROM e.kse_code THEN 'kse' END,
-                  CASE WHEN b.kfs_code IS DISTINCT FROM e.kfs_code THEN 'kfs' END
+                  CASE WHEN ?::boolean AND b.kse_code IS DISTINCT FROM e.kse_code THEN 'kse' END,
+                  CASE WHEN ?::boolean AND b.kfs_code IS DISTINCT FROM e.kfs_code THEN 'kfs' END
                 ]::text[], NULL) AS changes
-           FROM company_states e
-           JOIN company_states b ON b.bin = e.bin AND b.snapshot_id = ?
+           FROM diff_end e
+           JOIN diff_base b ON b.bin = e.bin
            LEFT JOIN company_names nb ON nb.id = b.name_id
            LEFT JOIN company_names ne ON ne.id = e.name_id
-          WHERE e.snapshot_id = ?
        )
        SELECT ?, ?, p.bin, t.kato, n.name_ru, n.name_kk, p.unit,
               p.name_from, p.name_to, p.director_from, p.director_to,
@@ -167,7 +210,7 @@ const ensureDiff = async (baseId: number, endId: number) => {
          LEFT JOIN addresses a ON a.id = p.address_to
          LEFT JOIN territories t ON t.id = a.territory_id
         WHERE cardinality(p.changes) > 0`,
-      [baseId, endId, baseId, endId],
+      [codes, codes, baseId, endId],
     );
 
     await trx.raw(
@@ -178,15 +221,12 @@ const ensureDiff = async (baseId: number, endId: number) => {
        SELECT ?, ?, e.bin, t.kato, n.name_ru, n.name_kk, e.unit,
               e.name_id, e.director_id, e.address_id, e.oked_code, e.secondary_oked,
               e.krp_code, e.kse_code, e.kfs_code, ARRAY['appeared']::text[]
-         FROM company_states e
+         FROM diff_end e
          LEFT JOIN company_names n ON n.id = e.name_id
          LEFT JOIN addresses a ON a.id = e.address_id
          LEFT JOIN territories t ON t.id = a.territory_id
-        WHERE e.snapshot_id = ?
-          AND NOT EXISTS (
-            SELECT 1 FROM company_states b
-             WHERE b.snapshot_id = ? AND b.bin = e.bin)`,
-      [baseId, endId, endId, baseId],
+        WHERE NOT EXISTS (SELECT 1 FROM diff_base b WHERE b.bin = e.bin)`,
+      [baseId, endId],
     );
 
     await trx.raw(
@@ -197,17 +237,149 @@ const ensureDiff = async (baseId: number, endId: number) => {
        SELECT ?, ?, b.bin, t.kato, n.name_ru, n.name_kk, b.unit,
               b.name_id, b.director_id, b.address_id, b.oked_code, b.secondary_oked,
               b.krp_code, b.kse_code, b.kfs_code, ARRAY['disappeared']::text[]
-         FROM company_states b
+         FROM diff_base b
          LEFT JOIN company_names n ON n.id = b.name_id
          LEFT JOIN addresses a ON a.id = b.address_id
          LEFT JOIN territories t ON t.id = a.territory_id
-        WHERE b.snapshot_id = ?
-          AND NOT EXISTS (
-            SELECT 1 FROM company_states e
-             WHERE e.snapshot_id = ? AND e.bin = b.bin)`,
-      [baseId, endId, baseId, endId],
+        WHERE NOT EXISTS (SELECT 1 FROM diff_end e WHERE e.bin = b.bin)`,
+      [baseId, endId],
     );
   });
+};
+
+const PERIOD_CACHE_LIMIT = 20;
+
+const SUMMARY_SQL = `
+  INSERT INTO period_summary
+    (period_id, bin, kato, name_ru, changes,
+     first_base, first_end, last_base, last_end, sort_pos)
+  WITH steps AS MATERIALIZED (
+    SELECT d.bin, d.base_id, d.end_id, d.changes, d.kato, d.name_ru,
+           s.taken_on AS step_on
+      FROM snapshot_diffs d
+      JOIN snapshots s ON s.id = d.end_id
+      JOIN unnest(?::int[], ?::int[]) AS p(base_id, end_id)
+        ON p.base_id = d.base_id AND p.end_id = d.end_id
+  ),
+  kinds AS (
+    SELECT st.bin, array_agg(DISTINCT kind) AS changes
+      FROM steps st, unnest(st.changes) AS kind
+     GROUP BY st.bin
+  ),
+  first_step AS (
+    SELECT DISTINCT ON (bin) bin, base_id, end_id FROM steps
+     ORDER BY bin, (changes @> '{appeared}'), step_on
+  ),
+  last_step AS (
+    SELECT DISTINCT ON (bin) bin, base_id, end_id, kato, name_ru FROM steps
+     ORDER BY bin, (changes @> '{disappeared}'), step_on DESC
+  )
+  SELECT ?, k.bin, l.kato, l.name_ru, k.changes,
+         f.base_id, f.end_id, l.base_id, l.end_id,
+         row_number() OVER (ORDER BY l.name_ru NULLS LAST, k.bin)
+    FROM kinds k
+    JOIN first_step f ON f.bin = k.bin
+    JOIN last_step l ON l.bin = k.bin`;
+
+const presetPairs = (snapshots: any[]) => {
+  const list = snapshots.filter((item) => !item.is_test);
+  if (list.length < 2) return [] as any[][];
+
+  const first = list[0];
+  const last = list[list.length - 1];
+  const pairs: any[][] = [
+    [first, last],
+    [list[list.length - 2], last],
+  ];
+
+  const years = [...new Set(list.map((item) => item.taken_on.slice(0, 4)))];
+  for (const year of years) {
+    const start = list.find((item) => item.taken_on.startsWith(year));
+    const next = list.find((item) => item.taken_on.slice(0, 4) > year);
+    const stop = next || last;
+    if (start && stop && start.taken_on < stop.taken_on)
+      pairs.push([start, stop]);
+  }
+
+  const seen = new Set<string>();
+  return pairs.filter(([a, b]) => {
+    const key = `${a.id}:${b.id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+const prunePeriods = async (snapshots: any[]) => {
+  const keep = new Set(
+    presetPairs(snapshots).map(([a, b]) => `${a.id}:${b.id}`),
+  );
+  const list = await rows(
+    "SELECT id, base_id, end_id FROM period_pairs ORDER BY used_at DESC",
+  );
+  const extra = list
+    .filter((row) => !keep.has(`${row.base_id}:${row.end_id}`))
+    .slice(PERIOD_CACHE_LIMIT)
+    .map((row) => row.id);
+  if (extra.length > 0) {
+    await rows("DELETE FROM period_pairs WHERE id = ANY(?::int[])", [
+      `{${extra.join(",")}}`,
+    ]);
+  }
+};
+
+const ensurePeriod = async (snapshots: any[], base: any, end: any) => {
+  const found = await rows(
+    "SELECT id FROM period_pairs WHERE base_id = ? AND end_id = ?",
+    [base.id, end.id],
+  );
+  if (found.length > 0) {
+    await rows("UPDATE period_pairs SET used_at = now() WHERE id = ?", [
+      found[0].id,
+    ]);
+    return found[0].id;
+  }
+
+  const startIndex = snapshots.findIndex((item) => item.id === base.id);
+  const endIndex = snapshots.findIndex((item) => item.id === end.id);
+  const bases: number[] = [];
+  const ends: number[] = [];
+  for (let index = startIndex; index < endIndex; index += 1) {
+    const from = snapshots[index].id;
+    const to = snapshots[index + 1].id;
+    bases.push(from);
+    ends.push(to);
+    await ensureDiff(from, to);
+  }
+
+  let periodId = 0;
+  await getStrapi().db.connection.transaction(async (trx: any) => {
+    await trx.raw("SELECT pg_advisory_xact_lock(?, ?)", [-base.id, end.id]);
+
+    const again = await trx.raw(
+      "SELECT id FROM period_pairs WHERE base_id = ? AND end_id = ?",
+      [base.id, end.id],
+    );
+    if (again.rows.length > 0) {
+      periodId = again.rows[0].id;
+      return;
+    }
+
+    const created = await trx.raw(
+      "INSERT INTO period_pairs (base_id, end_id) VALUES (?, ?) RETURNING id",
+      [base.id, end.id],
+    );
+    periodId = created.rows[0].id;
+
+    await trx.raw(SUMMARY_SQL, [
+      `{${bases.join(",")}}`,
+      `{${ends.join(",")}}`,
+      periodId,
+    ]);
+  });
+
+  await prunePeriods(snapshots);
+  return periodId;
 };
 
 const pairOf = (from: any, to: any) => ({ from: from ?? null, to: to ?? null });
@@ -336,106 +508,82 @@ export default {
       .trim()
       .slice(0, 200);
 
-    const bindings: any[] = [];
-    let source: string;
+    const conditions: string[] = ["d.changes @> ?::text[]"];
+    const filterBindings: any[] = [`{${requested.join(",")}}`];
 
-    if (period) {
-      const startIndex = snapshots.findIndex((item) => item.id === base.id);
-      const endIndex = snapshots.findIndex((item) => item.id === end.id);
-      const bases: number[] = [];
-      const ends: number[] = [];
+    if (filters.prefix) {
+      conditions.push("d.kato LIKE ?");
+      filterBindings.push(`${filters.prefix}%`);
+    }
 
-      for (let index = startIndex; index < endIndex; index += 1) {
-        const from = snapshots[index].id;
-        const to = snapshots[index + 1].id;
-        bases.push(from);
-        ends.push(to);
-        await ensureDiff(from, to);
+    if (q) {
+      const pattern = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
+      if (/^\d+$/.test(q)) {
+        conditions.push("d.bin LIKE ?");
+        filterBindings.push(pattern);
+      } else {
+        conditions.push(
+          "(d.name_ru ILIKE ? OR d.bin IN (SELECT bin FROM companies WHERE name_kk ILIKE ?))",
+        );
+        filterBindings.push(pattern, pattern);
       }
+    }
 
-      source = `(
-        WITH steps AS (
-          SELECT d.*, s.taken_on AS step_on
-            FROM snapshot_diffs d
-            JOIN snapshots s ON s.id = d.end_id
-            JOIN unnest(?::int[], ?::int[]) AS p(base_id, end_id)
-              ON p.base_id = d.base_id AND p.end_id = d.end_id
-           WHERE d.changes && ?::text[]
-        ),
-        kinds AS (
-          SELECT st.bin, array_agg(DISTINCT kind) AS changes
-            FROM steps st, unnest(st.changes) AS kind
-           GROUP BY st.bin
-        ),
-        first_step AS (
-          SELECT DISTINCT ON (bin) * FROM steps
-           ORDER BY bin, (changes @> '{appeared}'), step_on
-        ),
-        last_step AS (
-          SELECT DISTINCT ON (bin) * FROM steps
-           ORDER BY bin, (changes @> '{disappeared}'), step_on DESC
-        )
-        SELECT k.bin, k.changes, l.kato, l.name_ru, l.name_kk, l.unit,
-               f.name_from, l.name_to, f.director_from, l.director_to,
-               f.address_from, l.address_to, f.oked_from, l.oked_to,
-               f.secondary_from, l.secondary_to, f.krp_from, l.krp_to,
-               f.kse_from, l.kse_to, f.kfs_from, l.kfs_to
-          FROM kinds k
-          JOIN first_step f ON f.bin = k.bin
-          JOIN last_step l ON l.bin = k.bin
-      ) d`;
-      bindings.push(
-        `{${bases.join(",")}}`,
-        `{${ends.join(",")}}`,
-        `{${requested.join(",")}}`,
+    const company = toSqlConditions(filters, "c");
+    if (company.sql) {
+      conditions.push(
+        `EXISTS (SELECT 1 FROM companies c WHERE c.bin = d.bin AND ${company.sql})`,
       );
+      filterBindings.push(...company.bindings);
+    }
+
+    const where = conditions.join(" AND ");
+
+    let source: string;
+    let sourceBindings: any[];
+    if (period) {
+      const periodId = await ensurePeriod(snapshots, base, end);
+      source = "(SELECT * FROM period_summary WHERE period_id = ?) d";
+      sourceBindings = [periodId];
     } else {
       await ensureDiff(base.id, end.id);
       source =
         "(SELECT * FROM snapshot_diffs WHERE base_id = ? AND end_id = ?) d";
-      bindings.push(base.id, end.id);
+      sourceBindings = [base.id, end.id];
     }
 
-    bindings.push(`{${requested.join(",")}}`);
+    const counted = await rows(
+      `SELECT count(*)::int AS total FROM ${source} WHERE ${where}`,
+      [...sourceBindings, ...filterBindings],
+    );
+    meta.total = counted[0]?.total ?? 0;
 
-    let territoryFilter = "";
-    if (filters.prefix) {
-      territoryFilter = "AND d.kato LIKE ?";
-      bindings.push(`${filters.prefix}%`);
+    if (meta.total === 0) {
+      ctx.body = { data: [], meta };
+      return;
     }
 
-    let textFilter = "";
-    if (q) {
-      const pattern = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
-      if (/^\d+$/.test(q)) {
-        textFilter = "AND d.bin LIKE ?";
-        bindings.push(pattern);
-      } else {
-        textFilter = "AND (d.name_ru ILIKE ? OR d.name_kk ILIKE ?)";
-        bindings.push(pattern, pattern);
-      }
-    }
-
-    let companyFilter = "";
-    const company = toSqlConditions(filters, "c");
-    if (company.sql) {
-      companyFilter = `AND EXISTS (SELECT 1 FROM companies c WHERE c.bin = d.bin AND ${company.sql})`;
-      bindings.push(...company.bindings);
-    }
-
-    bindings.push(PAGE_SIZE, (page - 1) * PAGE_SIZE);
+    const detail = period
+      ? `SELECT pg.bin, pg.changes, pg.kato, pg.name_ru, l.name_kk, l.unit,
+                f.name_from, l.name_to, f.director_from, l.director_to,
+                f.address_from, l.address_to, f.oked_from, l.oked_to,
+                f.secondary_from, l.secondary_to, f.krp_from, l.krp_to,
+                f.kse_from, l.kse_to, f.kfs_from, l.kfs_to
+           FROM page pg
+           JOIN snapshot_diffs f
+             ON f.base_id = pg.first_base AND f.end_id = pg.first_end AND f.bin = pg.bin
+           JOIN snapshot_diffs l
+             ON l.base_id = pg.last_base AND l.end_id = pg.last_end AND l.bin = pg.bin`
+      : "SELECT * FROM page";
 
     const list = await rows(
       `WITH page AS (
-         SELECT d.*, count(*) OVER () AS total
-           FROM ${source}
-          WHERE d.changes @> ?::text[]
-            ${territoryFilter}
-            ${textFilter}
-            ${companyFilter}
-          ORDER BY d.name_ru ${order} NULLS LAST, d.bin
+         SELECT d.* FROM ${source}
+          WHERE ${where}
+          ORDER BY ${period ? `d.sort_pos ${order}` : `d.name_ru ${order} NULLS LAST, d.bin`}
           LIMIT ? OFFSET ?
-       )
+       ),
+       full_page AS (${detail})
        SELECT p.*, c.slug,
               nf.name_ru AS name_from_ru, nf.name_kk AS name_from_kk,
               nt.name_ru AS name_to_ru, nt.name_kk AS name_to_kk,
@@ -443,7 +591,7 @@ export default {
               a_from.address AS address_from_text, a_to.address AS address_to_text,
               t_from.path_ru AS address_from_place, t_to.path_ru AS address_to_place,
               t_from.path_kk AS address_from_place_kk, t_to.path_kk AS address_to_place_kk
-         FROM page p
+         FROM full_page p
          LEFT JOIN company_names nf ON nf.id = p.name_from
          LEFT JOIN company_names nt ON nt.id = p.name_to
          LEFT JOIN directors df ON df.id = p.director_from
@@ -454,10 +602,8 @@ export default {
          LEFT JOIN territories t_to ON t_to.id = a_to.territory_id
          LEFT JOIN companies c ON c.bin = p.bin
         ORDER BY p.name_ru ${order} NULLS LAST, p.bin`,
-      bindings,
+      [...sourceBindings, ...filterBindings, PAGE_SIZE, (page - 1) * PAGE_SIZE],
     );
-
-    meta.total = list.length > 0 ? Number(list[0].total) : 0;
 
     ctx.body = {
       data: list.map((row) => ({
@@ -508,6 +654,16 @@ export default {
       meta,
     };
   },
+
+  async warm(ctx: any) {
+    const snapshots = await loadSnapshots();
+    const pairs = presetPairs(snapshots);
+    for (const [base, end] of pairs) {
+      await ensurePeriod(snapshots, base, end);
+    }
+    ctx.body = { data: { periods: pairs.length } };
+  },
+
   async company(ctx: any) {
     if (blocked(ctx)) return ctx.forbidden();
 
@@ -522,33 +678,41 @@ export default {
     const bin = found[0].bin;
 
     const list = await rows(
-      `SELECT s.taken_on::text AS taken_on, s.is_test,
-              n.name_ru, n.name_kk, split_part(n.name_key, '|', 1) AS name_key_ru,
+      `SELECT p.from_on::text AS from_on, p.to_on::text AS to_on,
+              n.name_ru, n.name_kk, p.name_id AS name_key_ru,
               d.id AS director_id, d.name AS director_name,
               a.id AS address_id, a.address AS address_text, t.path_ru AS place, t.path_kk AS place_kk,
-              cs.unit, cs.oked_code, cs.secondary_oked, cs.krp_code, cs.kse_code, cs.kfs_code
-         FROM company_states cs
-         JOIN snapshots s ON s.id = cs.snapshot_id
-         LEFT JOIN company_names n ON n.id = cs.name_id
-         LEFT JOIN directors d ON d.id = cs.director_id
-         LEFT JOIN addresses a ON a.id = cs.address_id
+              p.unit, p.unit_id, p.oked_code, p.secondary_oked, p.krp_code, p.kse_code, p.kfs_code
+         FROM company_periods p
+         LEFT JOIN company_names n ON n.id = p.name_id
+         LEFT JOIN directors d ON d.id = p.director_id
+         LEFT JOIN addresses a ON a.id = p.address_id
          LEFT JOIN territories t ON t.id = a.territory_id
-        WHERE cs.bin = ?
-        ORDER BY s.taken_on`,
+        WHERE p.bin = ?
+        ORDER BY p.from_on`,
       [bin],
     );
 
     if (list.length === 0) return ctx.notFound("История не найдена");
 
     const snapshots = await loadSnapshots();
+    const present = await rows(
+      `SELECT count(*)::int AS count
+         FROM snapshots s
+        WHERE NOT s.is_test
+          AND EXISTS (
+            SELECT 1 FROM company_periods p
+             WHERE p.bin = ? AND s.taken_on BETWEEN p.from_on AND p.to_on)`,
+      [bin],
+    );
 
     ctx.body = {
       data: {
         bin,
-        firstSeen: list[0].taken_on,
-        lastSeen: list[list.length - 1].taken_on,
+        firstSeen: list[0].from_on,
+        lastSeen: list[list.length - 1].to_on,
         snapshotsTotal: snapshots.length,
-        snapshotsPresent: list.length,
+        snapshotsPresent: present[0].count,
         names: periods(list, "name_key_ru", (item) => ({
           ru: item.name_ru,
           kk: item.name_kk,
@@ -561,17 +725,17 @@ export default {
           place: item.place,
           placeKk: item.place_kk,
           unit: item.unit,
+          unitId: item.unit_id,
         })),
         oked: codePeriods(list, "oked_code"),
         secondaryOked: codePeriods(list, "secondary_oked"),
         krp: codePeriods(list, "krp_code"),
         kse: codePeriods(list, "kse_code"),
         kfs: codePeriods(list, "kfs_code"),
-        isTest: list.some((item) => item.is_test),
+        isTest: false,
       },
     };
   },
-
   async address(ctx: any) {
     if (blocked(ctx)) return ctx.forbidden();
 
@@ -590,9 +754,10 @@ export default {
     if (info.length === 0) return ctx.notFound("Адрес не найден");
 
     const timeline = await rows(
-      `SELECT s.taken_on::text AS taken_on, s.is_test, count(cs.bin)::int AS companies
+      `SELECT s.taken_on::text AS taken_on, s.is_test, count(p.bin)::int AS companies
          FROM snapshots s
-         LEFT JOIN company_states cs ON cs.snapshot_id = s.id AND cs.address_id = ?
+         LEFT JOIN company_periods p
+           ON p.address_id = ? AND s.taken_on BETWEEN p.from_on AND p.to_on
         GROUP BY s.id, s.taken_on, s.is_test
         ORDER BY s.taken_on`,
       [id],
@@ -607,15 +772,58 @@ export default {
     const page = Math.max(parseInt(String(ctx.query.page || "1"), 10) || 1, 1);
     if (page > MAX_PAGE) return ctx.badRequest("Слишком далёкая страница");
 
+    const unitParam = String(ctx.query.unit || "");
+    const unitBindings: any[] = [];
+    let unitFilter = "";
+    if (unitParam === "none") {
+      unitFilter = "AND p.unit_id IS NULL";
+    } else if (/^\d+$/.test(unitParam)) {
+      unitFilter = "AND p.unit_id = ?";
+      unitBindings.push(Number(unitParam));
+    }
+
     const companies = snapshot
       ? await rows(
-          `SELECT cs.bin, cs.unit, c.slug, c.name_ru, c.name_kk, count(*) OVER () AS total
-             FROM company_states cs
-             LEFT JOIN companies c ON c.bin = cs.bin
-            WHERE cs.snapshot_id = ? AND cs.address_id = ?
-            ORDER BY c.name_ru NULLS LAST, cs.bin
+          `SELECT p.bin, p.unit, p.unit_id, c.slug, c.name_ru, c.name_kk, count(*) OVER () AS total
+             FROM company_periods p
+             LEFT JOIN companies c ON c.bin = p.bin
+            WHERE p.address_id = ?
+              AND ?::date BETWEEN p.from_on AND p.to_on
+              ${unitFilter}
+            ORDER BY c.name_ru NULLS LAST, p.bin
             LIMIT ? OFFSET ?`,
-          [snapshot.id, id, PAGE_SIZE, (page - 1) * PAGE_SIZE],
+          [
+            id,
+            snapshot.taken_on,
+            ...unitBindings,
+            PAGE_SIZE,
+            (page - 1) * PAGE_SIZE,
+          ],
+        )
+      : [];
+
+    const units = snapshot
+      ? await rows(
+          `SELECT u.id, u.label, u.kind, u.number, u.floor, count(p.bin)::int AS companies
+             FROM company_periods p
+             JOIN units u ON u.id = p.unit_id
+            WHERE p.address_id = ?
+              AND ?::date BETWEEN p.from_on AND p.to_on
+            GROUP BY u.id, u.label, u.kind, u.number, u.floor
+            ORDER BY companies DESC, u.kind, length(u.number), u.number
+            LIMIT ?`,
+          [id, snapshot.taken_on, UNITS_LIMIT],
+        )
+      : [];
+
+    const unitStats = snapshot
+      ? await rows(
+          `SELECT count(*) FILTER (WHERE unit_id IS NULL)::int AS without_unit,
+                  count(DISTINCT unit_id)::int AS units_total
+             FROM company_periods
+            WHERE address_id = ?
+              AND ?::date BETWEEN from_on AND to_on`,
+          [id, snapshot.taken_on],
         )
       : [];
 
@@ -636,10 +844,22 @@ export default {
           companies: item.companies,
         })),
         snapshot: toSnapshot(snapshot),
+        units: units.map((item) => ({
+          id: item.id,
+          label: item.label,
+          kind: item.kind,
+          number: item.number,
+          floor: item.floor,
+          companies: item.companies,
+        })),
+        unitsTotal: unitStats[0]?.units_total ?? 0,
+        withoutUnit: unitStats[0]?.without_unit ?? 0,
+        unitFilter: unitParam || null,
         companies: companies.map((item) => ({
           bin: item.bin,
           slug: item.slug,
           unit: item.unit,
+          unitId: item.unit_id,
           nameRu: item.name_ru,
           nameKk: item.name_kk,
         })),
@@ -650,7 +870,91 @@ export default {
       },
     };
   },
+  async unit(ctx: any) {
+    if (blocked(ctx)) return ctx.forbidden();
 
+    const id = parseInt(String(ctx.params.id || ""), 10);
+    if (!Number.isInteger(id) || id < 1)
+      return ctx.badRequest("Неверное помещение");
+
+    const info = await rows(
+      `SELECT u.id, u.label, u.kind, u.number, u.floor,
+              a.id AS address_id, a.address, t.path_ru AS place, t.path_kk AS place_kk, t.kato
+         FROM units u
+         JOIN addresses a ON a.id = u.address_id
+         LEFT JOIN territories t ON t.id = a.territory_id
+        WHERE u.id = ?`,
+      [id],
+    );
+    if (info.length === 0) return ctx.notFound("Помещение не найдено");
+
+    const snapshots = await loadSnapshots();
+    const latest = snapshots[snapshots.length - 1];
+    const latestOn = latest ? latest.taken_on : "1900-01-01";
+    const page = Math.max(parseInt(String(ctx.query.page || "1"), 10) || 1, 1);
+    if (page > MAX_PAGE) return ctx.badRequest("Слишком далёкая страница");
+
+    const timeline = await rows(
+      `SELECT s.taken_on::text AS taken_on, s.is_test, count(p.bin)::int AS companies
+         FROM snapshots s
+         LEFT JOIN company_periods p
+           ON p.unit_id = ? AND s.taken_on BETWEEN p.from_on AND p.to_on
+        GROUP BY s.id, s.taken_on, s.is_test
+        ORDER BY s.taken_on`,
+      [id],
+    );
+
+    const companies = await rows(
+      `SELECT p.bin, c.slug, c.name_ru, c.name_kk,
+              min(p.from_on)::text AS first_seen, max(p.to_on)::text AS last_seen,
+              bool_or(p.to_on = ?::date) AS current, count(*) OVER () AS total
+         FROM company_periods p
+         LEFT JOIN companies c ON c.bin = p.bin
+        WHERE p.unit_id = ?
+        GROUP BY p.bin, c.slug, c.name_ru, c.name_kk
+        ORDER BY bool_or(p.to_on = ?::date) DESC, c.name_ru NULLS LAST, p.bin
+        LIMIT ? OFFSET ?`,
+      [latestOn, id, latestOn, PAGE_SIZE, (page - 1) * PAGE_SIZE],
+    );
+
+    const row = info[0];
+    ctx.body = {
+      data: {
+        id: row.id,
+        label: row.label,
+        kind: row.kind,
+        number: row.number,
+        floor: row.floor,
+        address: {
+          id: row.address_id,
+          text: row.address,
+          place: row.place,
+          placeKk: row.place_kk,
+          kato: row.kato,
+        },
+        currentCompanies:
+          timeline.length > 0 ? timeline[timeline.length - 1].companies : 0,
+        timeline: timeline.map((item) => ({
+          takenOn: item.taken_on,
+          isTest: item.is_test,
+          companies: item.companies,
+        })),
+        companies: companies.map((item) => ({
+          bin: item.bin,
+          slug: item.slug,
+          nameRu: item.name_ru,
+          nameKk: item.name_kk,
+          firstSeen: item.first_seen,
+          lastSeen: item.last_seen,
+          current: item.current,
+        })),
+        companiesTotal: companies.length > 0 ? Number(companies[0].total) : 0,
+        page,
+        pageSize: PAGE_SIZE,
+        maxPage: MAX_PAGE,
+      },
+    };
+  },
   async directors(ctx: any) {
     if (blocked(ctx)) return ctx.forbidden();
 
@@ -676,18 +980,17 @@ export default {
       `WITH matched AS (
          SELECT id, name FROM directors WHERE name_key LIKE ?
        )
-       SELECT m.id, m.name, count(cs.bin)::int AS companies
+       SELECT m.id, m.name, count(p.bin)::int AS companies
          FROM matched m
-         LEFT JOIN company_states cs ON cs.director_id = m.id AND cs.snapshot_id = ?
+         LEFT JOIN company_periods p ON p.director_id = m.id AND p.to_on = ?::date
         GROUP BY m.id, m.name
         ORDER BY companies DESC, m.name
         LIMIT ?`,
-      [`%${key}%`, latest.id, limit],
+      [`%${key}%`, latest.taken_on, limit],
     );
 
     ctx.body = { data: list };
   },
-
   async director(ctx: any) {
     if (blocked(ctx)) return ctx.forbidden();
 
@@ -702,36 +1005,31 @@ export default {
 
     const snapshots = await loadSnapshots();
     const latest = snapshots[snapshots.length - 1];
+    const latestOn = latest ? latest.taken_on : "1900-01-01";
     const page = Math.max(parseInt(String(ctx.query.page || "1"), 10) || 1, 1);
     if (page > MAX_PAGE) return ctx.badRequest("Слишком далёкая страница");
 
     const timeline = await rows(
-      `SELECT s.taken_on::text AS taken_on, s.is_test, count(cs.bin)::int AS companies
+      `SELECT s.taken_on::text AS taken_on, s.is_test, count(p.bin)::int AS companies
          FROM snapshots s
-         LEFT JOIN company_states cs ON cs.snapshot_id = s.id AND cs.director_id = ?
+         LEFT JOIN company_periods p
+           ON p.director_id = ? AND s.taken_on BETWEEN p.from_on AND p.to_on
         GROUP BY s.id, s.taken_on, s.is_test
         ORDER BY s.taken_on`,
       [id],
     );
 
     const companies = await rows(
-      `SELECT cs.bin, c.slug, c.name_ru, c.name_kk,
-              min(s.taken_on)::text AS first_seen, max(s.taken_on)::text AS last_seen,
-              bool_or(s.id = ?) AS current, count(*) OVER () AS total
-         FROM company_states cs
-         JOIN snapshots s ON s.id = cs.snapshot_id
-         LEFT JOIN companies c ON c.bin = cs.bin
-        WHERE cs.director_id = ?
-        GROUP BY cs.bin, c.slug, c.name_ru, c.name_kk
-        ORDER BY bool_or(s.id = ?) DESC, c.name_ru NULLS LAST, cs.bin
+      `SELECT p.bin, c.slug, c.name_ru, c.name_kk,
+              min(p.from_on)::text AS first_seen, max(p.to_on)::text AS last_seen,
+              bool_or(p.to_on = ?::date) AS current, count(*) OVER () AS total
+         FROM company_periods p
+         LEFT JOIN companies c ON c.bin = p.bin
+        WHERE p.director_id = ?
+        GROUP BY p.bin, c.slug, c.name_ru, c.name_kk
+        ORDER BY bool_or(p.to_on = ?::date) DESC, c.name_ru NULLS LAST, p.bin
         LIMIT ? OFFSET ?`,
-      [
-        latest ? latest.id : 0,
-        id,
-        latest ? latest.id : 0,
-        PAGE_SIZE,
-        (page - 1) * PAGE_SIZE,
-      ],
+      [latestOn, id, latestOn, PAGE_SIZE, (page - 1) * PAGE_SIZE],
     );
 
     ctx.body = {

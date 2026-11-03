@@ -1,8 +1,13 @@
 .chart {
   display: block;
   width: 100%;
-  max-width: 640px;
   margin-top: 12px;
+
+  &__guide {
+    stroke: #8a96a3;
+    stroke-width: 1;
+    stroke-dasharray: 3 3;
+  }
 
   &__axis {
     stroke: #dce3ea;
@@ -26,5 +31,39 @@
   &__label {
     font-size: 12px;
     fill: #5b6472;
+  }
+
+  &__line {
+    fill: none;
+    stroke: #3a6ea5;
+    stroke-width: 2;
+    stroke-linejoin: round;
+  }
+
+  &__area {
+    fill: rgba(58, 110, 165, 0.14);
+    stroke: none;
+  }
+
+  &__dot {
+    fill: #3a6ea5;
+  }
+
+  &__grid {
+    stroke: #dce3ea;
+    stroke-dasharray: 4 4;
+  }
+
+  &__tick {
+    stroke: #b8c2cc;
+  }
+
+  &__scale {
+    font-size: 11px;
+    fill: #8a96a3;
+  }
+
+  &__hit {
+    fill: transparent;
   }
 }

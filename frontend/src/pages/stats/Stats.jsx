@@ -17,6 +17,12 @@ const number = (value) => Number(value || 0).toLocaleString("ru-RU");
 const sum = (items, read) =>
   items.reduce((total, item) => total + (Number(read(item)) || 0), 0);
 
+const kindCount = (item, kind) => {
+  if (kind === "appeared") return item.appeared;
+  if (kind === "disappeared") return item.disappeared;
+  return item.changes?.[kind];
+};
+
 const breakdown = (items, field) => {
   const result = {};
   const last = items[items.length - 1]?.[field] || {};
@@ -324,7 +330,7 @@ export default function Stats() {
                   <td>{t(`history.tag.${kind}`)}</td>
                   <td>
                     {cell(
-                      sum(items, (item) => item.changes?.[kind]),
+                      sum(items, (item) => kindCount(item, kind)),
                       companiesUrl({ changed: kind, from, to, mode: "period" }),
                     )}
                   </td>

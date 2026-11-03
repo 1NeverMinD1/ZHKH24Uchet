@@ -14,6 +14,8 @@ export default function CompanyHistory({ slug, locked }) {
     data: null,
     status: "idle",
   });
+  const [openSlug, setOpenSlug] = useState(null);
+  const open = openSlug === slug;
 
   useEffect(() => {
     if (locked || !slug) return;
@@ -113,6 +115,11 @@ export default function CompanyHistory({ slug, locked }) {
       ),
   ];
 
+  const known = (items) => {
+    const first = (items || []).findIndex((item) => item.code);
+    return first > 0 ? items.slice(first) : items;
+  };
+
   const extras = [
     [
       t("history.tag.name"),
@@ -123,8 +130,8 @@ export default function CompanyHistory({ slug, locked }) {
     codeBlock("oked", data.oked, "oked"),
     codeBlock("secondary_oked", data.secondaryOked, null),
     codeBlock("krp", data.krp, "krp"),
-    codeBlock("kse", data.kse, "kse"),
-    codeBlock("kfs", data.kfs, "kfs"),
+    codeBlock("kse", known(data.kse), "kse"),
+    codeBlock("kfs", known(data.kfs), "kfs"),
   ].filter(([, items]) => items && items.length > 1);
 
   return (
@@ -137,43 +144,58 @@ export default function CompanyHistory({ slug, locked }) {
         })}
       </p>
 
-      <div className="history__columns">
-        {timeline(t("history.card.directors"), data.directors, (item) => (
-          <p className="history__value">
-            {item.id && item.name ? (
-              <Link to={`/director/${item.id}`} className="history__person">
-                {item.name}
-              </Link>
-            ) : (
-              item.name || nobody
-            )}
-          </p>
-        ))}
+      <button
+        type="button"
+        className="history__toggle"
+        aria-expanded={open}
+        onClick={() => setOpenSlug(open ? null : slug)}
+      >
+        {open ? t("history.card.hide") : t("history.card.show")}
+      </button>
 
-        {timeline(t("history.card.addresses"), data.addresses, (item) => (
-          <>
-            {value(item.text)}
-            {placeOf(item) && <p className="history__place">{placeOf(item)}</p>}
-            {item.unit && (
-              <p className="history__place">
-                {t("history.card.unit", { unit: item.unit })}
+      {open && (
+        <>
+          <div className="history__columns">
+            {timeline(t("history.card.directors"), data.directors, (item) => (
+              <p className="history__value">
+                {item.id && item.name ? (
+                  <Link to={`/director/${item.id}`} className="history__person">
+                    {item.name}
+                  </Link>
+                ) : (
+                  item.name || nobody
+                )}
               </p>
-            )}
-            {item.id && (
-              <Link to={`/address/${item.id}`} className="history__link">
-                {t("history.card.allCompanies")}
-              </Link>
-            )}
-          </>
-        ))}
-      </div>
+            ))}
 
-      {extras.length > 0 && (
-        <div className="history__columns">
-          {extras.map(([title, items, render]) =>
-            timeline(title, items, render),
+            {timeline(t("history.card.addresses"), data.addresses, (item) => (
+              <>
+                {value(item.text)}
+                {placeOf(item) && (
+                  <p className="history__place">{placeOf(item)}</p>
+                )}
+                {item.unit && (
+                  <p className="history__place">
+                    {t("history.card.unit", { unit: item.unit })}
+                  </p>
+                )}
+                {item.id && (
+                  <Link to={`/address/${item.id}`} className="history__link">
+                    {t("history.card.allCompanies")}
+                  </Link>
+                )}
+              </>
+            ))}
+          </div>
+
+          {extras.length > 0 && (
+            <div className="history__columns">
+              {extras.map(([title, items, render]) =>
+                timeline(title, items, render),
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
     </section>
   );

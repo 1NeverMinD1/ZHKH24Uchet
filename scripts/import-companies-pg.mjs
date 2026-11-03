@@ -1,8 +1,12 @@
 import { createHmac } from "node:crypto";
 import ExcelJS from "exceljs";
 import pg from "pg";
+import { cellAt, detectColumns } from "./lib/columns.mjs";
+import { legalFormOf, splitName } from "./lib/keys.mjs";
 
-const [, , filePath, limitArg] = process.argv;
+const args = process.argv.slice(2);
+const INSERT_ONLY = args.includes("--insert-only");
+const [filePath, limitArg] = args.filter((arg) => !arg.startsWith("--"));
 const LIMIT = Number(limitArg) > 0 ? Number(limitArg) : Infinity;
 const BATCH = 5000;
 const TEMPLATE_BIN = "000000000000";
@@ -78,6 +82,10 @@ const toIsoDate = (value) => {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return value.toISOString().slice(0, 10);
   }
+  if (typeof value === "string") {
+    const match = value.trim().match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+    if (match) return `${match[3]}-${match[2]}-${match[1]}`;
+  }
   const serial = Number(value);
   if (!Number.isFinite(serial) || serial <= 0) return "";
   return new Date(Math.round((serial - 25569) * 86400 * 1000))
@@ -152,73 +160,8 @@ const slugName = (name) => {
   return latin.slice(0, 60).replace(/-[^-]*$/, "") || latin.slice(0, 60);
 };
 
-const QUOTES = /[«»"“”„]/;
-
-const LEGAL_FORMS = [
-  ["branch", /^(ФИЛИАЛ|ПРЕДСТАВИТЕЛЬСТВО)( |$)/],
-  ["ksk", /КООПЕРАТИВ\S* СОБСТВЕННИКОВ (КВАРТИР|ПОМЕЩЕНИЙ)|^(ПК )?КСК( |$)/],
-  [
-    "partnership",
-    /ТОВАРИЩЕСТВ\S* С ДОПОЛНИТЕЛЬНОЙ|^(ПОЛНОЕ|КОММАНДИТНОЕ) ТОВАРИЩЕСТВО|СЕЛЬСКОХОЗЯЙСТВЕННОЕ ТОВАРИЩЕСТВО|^(ТДО|КТ)( |$)/,
-  ],
-  ["too", /ТОВАРИЩЕСТВ.*(ОГ?Р\S*НИЧ|ОТВЕ\S*СТВЕННОСТ)|^ТОО( |$)/],
-  [
-    "aifc",
-    /^(ЧАСТНАЯ|ПУБЛИЧНАЯ) КОМПАНИЯ|^КОМПАНИЯ СПЕЦИАЛЬНОГО НАЗНАЧЕНИЯ|^ЧК( |$)|^ПАРТНЕРСТВО С ОГРАНИЧЕННОЙ|^ОГРАНИЧЕННОЕ ПАРТНЕРСТВО|^НЕКОММЕРЧЕСКАЯ ОРГАНИЗАЦИЯ/,
-  ],
-  [
-    "ao",
-    /^((НЕКОММЕРЧЕСКОЕ|ЗАКРЫТОЕ|ОТКРЫТОЕ) )?АКЦИОНЕРНОЕ ОБЩЕСТВО|^(АО|НАО|ЗАО|ОАО)( |$)/,
-  ],
-  ["osi", /^ОБ[ЪЬ]?ЕД[ИЕ]Н\S* СОБСТВЕННИКОВ ИМУЩЕСТВА|^ОСИ( |$)/],
-  ["coop", /КООПЕРАТИВ|^(ПК|СПК|СХПК|ЖСК|ПГК)( |$)/],
-  ["gov_enterprise", /ГОСУДА\S*.*ПРЕДП|^(ГКП|КГКП|КГП|РГП|РГКП)( |$)/],
-  ["gov_institution", /ГОСУДА\S*.*УЧЕ?РЕЖД|^(ГУ|КГУ|РГУ)( |$)/],
-  [
-    "association",
-    /ОБ[ЪЬ]?ЕД[ИЕ]Н|АССОЦИАЦИ|СОЮЗ( |$)|ПАЛАТА( |$)|КОЛЛЕГИЯ( |$)|^(ОО|ООИ|ОЮЛ|РОО)( |$)/,
-  ],
-  ["fund", /ФОНД( |$)|^(ОФ|ЧФ|КФ)( |$)/],
-  ["institution", /УЧЕ?РЕЖД|^ЧУ( |$)/],
-];
 const FORM_PREFIX =
   /^(ТОВАРИЩЕСТВ[ОА] С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ|ТОО|(ЧАСТНАЯ|ПУБЛИЧНАЯ) КОМПАНИЯ( (ОТКРЫТОГО|ЗАКРЫТОГО) ИНВЕСТИЦИОННОГО ТИПА)?|КОМПАНИЯ СПЕЦИАЛЬНОГО НАЗНАЧЕНИЯ|ЧК)\s+/i;
-
-const splitName = (name) => {
-  const text = name.replace(/''/g, '"');
-  const first = text.search(QUOTES);
-  if (first === -1) return { form: text, inner: "" };
-
-  let last = first;
-  for (let i = text.length - 1; i > first; i -= 1) {
-    if (QUOTES.test(text[i])) {
-      last = i;
-      break;
-    }
-  }
-
-  const head = text.slice(0, first);
-  const tail = last > first ? text.slice(last + 1) : "";
-  const inner =
-    last > first ? text.slice(first + 1, last) : text.slice(first + 1);
-
-  return {
-    form: head.trim() ? head : tail.trim() ? tail : inner,
-    inner,
-  };
-};
-
-const legalFormOf = (form) => {
-  const head = form
-    .toUpperCase()
-    .replace(/Ё/g, "Е")
-    .replace(/[^А-ЯA-Z0-9]+/g, " ")
-    .trim();
-  for (const [code, pattern] of LEGAL_FORMS) {
-    if (pattern.test(head)) return code;
-  }
-  return "other";
-};
 
 const trimJunk = (value) => value.replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 
@@ -227,11 +170,14 @@ const sortNameOf = (name, inner) =>
     trimJunk(inner || name.replace(FORM_PREFIX, "")) || trimJunk(name)
   ).toUpperCase();
 
-const toRecord = (cells) => {
-  const bin = clean(cells[1]);
+const toRecord = (cells, map) => {
+  const raw = (field) => cellAt(cells, map, field);
+  const get = (field) => clean(raw(field));
+
+  const bin = get("bin");
   if (!/^\d{12}$/.test(bin)) return null;
 
-  const nameRu = clean(cells[3]);
+  const nameRu = get("name_ru");
   if (!nameRu) return null;
 
   const code = slugCode(bin);
@@ -239,34 +185,33 @@ const toRecord = (cells) => {
 
   return {
     bin,
-    name_kk: clean(cells[2]),
+    name_kk: get("name_kk"),
     name_ru: nameRu,
-    registration_date: toIsoDate(cells[4]),
-    oked_code: clean(cells[5]),
-    oked_name_kk: clean(cells[6]),
-    oked_name_ru: clean(cells[7]),
-    secondary_oked: clean(cells[8]),
-    krp_code: clean(cells[9]),
-    krp_name_kk: clean(cells[10]),
-    krp_name_ru: clean(cells[11]),
-    kse_code: clean(cells[12]),
-    kse_name_kk: clean(cells[13]),
-    kse_name_ru: clean(cells[14]),
-    kfs_code: clean(cells[15]),
-    kfs_name_kk: clean(cells[16]),
-    kfs_name_ru: clean(cells[17]),
-    kato: clean(cells[18]),
-    locality_kk: clean(cells[19]),
-    locality_ru: clean(cells[20]),
-    legal_address: clean(cells[21]),
-    director_name: clean(cells[22]),
+    registration_date: toIsoDate(raw("registration_date")),
+    oked_code: get("oked_code"),
+    oked_name_kk: get("oked_name_kk"),
+    oked_name_ru: get("oked_name_ru"),
+    secondary_oked: get("secondary_oked"),
+    krp_code: get("krp_code"),
+    krp_name_kk: get("krp_name_kk"),
+    krp_name_ru: get("krp_name_ru"),
+    kse_code: get("kse_code"),
+    kse_name_kk: get("kse_name_kk"),
+    kse_name_ru: get("kse_name_ru"),
+    kfs_code: get("kfs_code"),
+    kfs_name_kk: get("kfs_name_kk"),
+    kfs_name_ru: get("kfs_name_ru"),
+    kato: get("kato"),
+    locality_kk: get("locality_kk"),
+    locality_ru: get("locality_ru"),
+    legal_address: get("legal_address"),
+    director_name: get("director_name"),
     slug: `${slugName(nameRu)}-${code}`,
     slug_code: code,
     legal_form: legalFormOf(parts.form),
     sort_name: sortNameOf(nameRu, parts.inner),
   };
 };
-
 const sourceValue = (column) =>
   column === "registration_date"
     ? `NULLIF(s.${column}, '')::date`
@@ -360,6 +305,7 @@ const reader = new ExcelJS.stream.xlsx.WorkbookReader(filePath, {
 });
 
 let sheetNumber = 0;
+let layout = null;
 
 outer: for await (const sheet of reader) {
   sheetNumber += 1;
@@ -367,7 +313,28 @@ outer: for await (const sheet of reader) {
 
   for await (const row of sheet) {
     stats.rows += 1;
-    const record = toRecord(row.values);
+    const values = row.values;
+
+    if (!layout || !/^\d{12}$/.test(clean(cellAt(values, layout.map, "bin")))) {
+      const detected = detectColumns(values);
+      if (detected) {
+        if (detected.missing.length > 0) {
+          console.error(
+            `В заголовке не найдены колонки: ${detected.missing.join(", ")}.`,
+          );
+          process.exit(1);
+        }
+        layout = detected;
+        continue;
+      }
+    }
+
+    if (!layout) {
+      stats.skipped += 1;
+      continue;
+    }
+
+    const record = toRecord(values, layout.map);
 
     if (!record) {
       stats.skipped += 1;
@@ -397,6 +364,10 @@ outer: for await (const sheet of reader) {
 }
 
 await flush();
+if (!layout) {
+  console.error("В файле не найдена строка заголовков с колонкой «БИН».");
+  process.exit(1);
+}
 log(`Файл прочитан: ${stats.valid} компаний. Обновление companies...`);
 
 const sourceSql =
@@ -404,14 +375,16 @@ const sourceSql =
 
 await client.query("BEGIN");
 
-const updated = await client.query(
-  `UPDATE companies c
+const updated = INSERT_ONLY
+  ? { rowCount: 0 }
+  : await client.query(
+      `UPDATE companies c
       SET ${UPDATE_COLUMNS.map((col) => `${col} = ${sourceValue(col)}`).join(",\n          ")},
           updated_at = now()
      FROM ${sourceSql}
     WHERE c.bin = s.bin
       AND (${UPDATE_COLUMNS.map((col) => `c.${col} IS DISTINCT FROM ${sourceValue(col)}`).join("\n           OR ")})`,
-);
+    );
 log(
   `Обновлено изменившихся компаний: ${updated.rowCount}. Добавление новых...`,
 );

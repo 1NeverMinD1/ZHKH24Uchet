@@ -1,50 +1,56 @@
 WITH latest AS (
-  SELECT id FROM snapshots WHERE NOT is_test ORDER BY taken_on DESC LIMIT 1
+  SELECT max(taken_on) AS taken_on FROM snapshots WHERE NOT is_test
 ),
 seen AS (
-  SELECT cs.bin,
-         max(s.taken_on) AS last_seen,
-         bool_or(cs.snapshot_id = (SELECT id FROM latest)) AS active
-    FROM company_states cs
-    JOIN snapshots s ON s.id = cs.snapshot_id
-   WHERE NOT s.is_test
-   GROUP BY cs.bin
+  SELECT bin, max(to_on) AS last_seen FROM company_periods GROUP BY bin
 )
 UPDATE companies c
    SET last_seen = seen.last_seen,
-       status = CASE WHEN seen.active THEN 'active' ELSE 'gone' END
+       status = CASE WHEN seen.last_seen = (SELECT taken_on FROM latest) THEN 'active' ELSE 'gone' END
   FROM seen
  WHERE seen.bin = c.bin
    AND (c.last_seen IS DISTINCT FROM seen.last_seen
-        OR c.status IS DISTINCT FROM CASE WHEN seen.active THEN 'active' ELSE 'gone' END);
+        OR c.status IS DISTINCT FROM
+           CASE WHEN seen.last_seen = (SELECT taken_on FROM latest) THEN 'active' ELSE 'gone' END);
 
 ANALYZE companies;
 
-TRUNCATE snapshot_stats;
+DROP TABLE IF EXISTS stats_todo;
+
+CREATE TEMP TABLE stats_todo AS
+WITH ordered AS (
+  SELECT id, taken_on, has_codes,
+         lag(id) OVER (ORDER BY taken_on) AS prev_id,
+         lag(taken_on) OVER (ORDER BY taken_on) AS prev_on,
+         lag(has_codes) OVER (ORDER BY taken_on) AS prev_codes
+    FROM snapshots
+   WHERE NOT is_test
+)
+SELECT * FROM ordered o
+ WHERE NOT EXISTS (SELECT 1 FROM snapshot_stats st WHERE st.snapshot_id = o.id);
 
 INSERT INTO snapshot_stats (snapshot_id, previous_id, total)
-SELECT s.id,
-       lag(s.id) OVER (ORDER BY s.taken_on),
-       (SELECT count(*) FROM company_states cs WHERE cs.snapshot_id = s.id)
-  FROM snapshots s
- WHERE NOT s.is_test;
+SELECT t.id, t.prev_id,
+       (SELECT count(*) FROM company_periods p
+         WHERE p.from_on <= t.taken_on AND p.to_on >= t.taken_on)
+  FROM stats_todo t;
 
 UPDATE snapshot_stats st
    SET appeared = (
-         SELECT count(*)
-           FROM company_states e
-          WHERE e.snapshot_id = st.snapshot_id
+         SELECT count(*) FROM company_periods e
+          WHERE e.from_on = t.taken_on
             AND NOT EXISTS (
-              SELECT 1 FROM company_states b
-               WHERE b.snapshot_id = st.previous_id AND b.bin = e.bin)),
+              SELECT 1 FROM company_periods b
+               WHERE b.bin = e.bin AND b.to_on = t.prev_on)),
        disappeared = (
-         SELECT count(*)
-           FROM company_states b
-          WHERE b.snapshot_id = st.previous_id
+         SELECT count(*) FROM company_periods b
+          WHERE b.to_on = t.prev_on
             AND NOT EXISTS (
-              SELECT 1 FROM company_states e
-               WHERE e.snapshot_id = st.snapshot_id AND e.bin = b.bin))
- WHERE st.previous_id IS NOT NULL;
+              SELECT 1 FROM company_periods e
+               WHERE e.bin = b.bin AND e.from_on = t.taken_on))
+  FROM stats_todo t
+ WHERE st.snapshot_id = t.id
+   AND t.prev_id IS NOT NULL;
 
 UPDATE snapshot_stats st
    SET changed = x.changed,
@@ -70,20 +76,21 @@ UPDATE snapshot_stats st
            count(*) FILTER (WHERE name OR director OR address OR oked
                                   OR secondary_oked OR krp OR kse OR kfs) AS changed
       FROM (
-        SELECT st2.snapshot_id,
-               split_part(nb.name_key, '|', 1) IS DISTINCT FROM split_part(ne.name_key, '|', 1) AS name,
+        SELECT t.id AS snapshot_id,
+               b.name_id IS DISTINCT FROM e.name_id AS name,
                b.director_id IS DISTINCT FROM e.director_id AS director,
                b.address_id IS DISTINCT FROM e.address_id AS address,
                b.oked_code IS DISTINCT FROM e.oked_code AS oked,
                b.secondary_oked IS DISTINCT FROM e.secondary_oked AS secondary_oked,
                b.krp_code IS DISTINCT FROM e.krp_code AS krp,
-               b.kse_code IS DISTINCT FROM e.kse_code AS kse,
-               b.kfs_code IS DISTINCT FROM e.kfs_code AS kfs
-          FROM snapshot_stats st2
-          JOIN company_states e ON e.snapshot_id = st2.snapshot_id
-          JOIN company_states b ON b.snapshot_id = st2.previous_id AND b.bin = e.bin
+               (t.has_codes AND t.prev_codes AND b.kse_code IS DISTINCT FROM e.kse_code) AS kse,
+               (t.has_codes AND t.prev_codes AND b.kfs_code IS DISTINCT FROM e.kfs_code) AS kfs
+          FROM stats_todo t
+          JOIN company_periods e ON e.from_on = t.taken_on
+          JOIN company_periods b ON b.bin = e.bin AND b.to_on = t.prev_on
           LEFT JOIN company_names nb ON nb.id = b.name_id
           LEFT JOIN company_names ne ON ne.id = e.name_id
+         WHERE t.prev_id IS NOT NULL
       ) flags
      GROUP BY snapshot_id
   ) x
@@ -95,16 +102,18 @@ UPDATE snapshot_stats st
     SELECT snapshot_id,
            jsonb_object_agg(form, jsonb_build_object('total', total, 'appeared', appeared)) AS data
       FROM (
-        SELECT st2.snapshot_id,
+        SELECT t.id AS snapshot_id,
                coalesce(c.legal_form, 'other') AS form,
                count(*) AS total,
-               count(*) FILTER (WHERE st2.previous_id IS NOT NULL AND NOT EXISTS (
-                 SELECT 1 FROM company_states b
-                  WHERE b.snapshot_id = st2.previous_id AND b.bin = cs.bin)) AS appeared
-          FROM snapshot_stats st2
-          JOIN company_states cs ON cs.snapshot_id = st2.snapshot_id
-          LEFT JOIN companies c ON c.bin = cs.bin
-         GROUP BY st2.snapshot_id, coalesce(c.legal_form, 'other')
+               count(*) FILTER (WHERE t.prev_id IS NOT NULL
+                                  AND p.from_on = t.taken_on
+                                  AND NOT EXISTS (
+                                    SELECT 1 FROM company_periods b
+                                     WHERE b.bin = p.bin AND b.to_on = t.prev_on)) AS appeared
+          FROM stats_todo t
+          JOIN company_periods p ON p.from_on <= t.taken_on AND p.to_on >= t.taken_on
+          LEFT JOIN companies c ON c.bin = p.bin
+         GROUP BY t.id, coalesce(c.legal_form, 'other')
       ) g
      GROUP BY snapshot_id
   ) x
@@ -116,21 +125,25 @@ UPDATE snapshot_stats st
     SELECT snapshot_id,
            jsonb_object_agg(region, jsonb_build_object('total', total, 'appeared', appeared)) AS data
       FROM (
-        SELECT st2.snapshot_id,
-               coalesce(left(t.kato, 2), '00') AS region,
+        SELECT t.id AS snapshot_id,
+               coalesce(left(tr.kato, 2), '00') AS region,
                count(*) AS total,
-               count(*) FILTER (WHERE st2.previous_id IS NOT NULL AND NOT EXISTS (
-                 SELECT 1 FROM company_states b
-                  WHERE b.snapshot_id = st2.previous_id AND b.bin = cs.bin)) AS appeared
-          FROM snapshot_stats st2
-          JOIN company_states cs ON cs.snapshot_id = st2.snapshot_id
-          LEFT JOIN addresses a ON a.id = cs.address_id
-          LEFT JOIN territories t ON t.id = a.territory_id
-         GROUP BY st2.snapshot_id, coalesce(left(t.kato, 2), '00')
+               count(*) FILTER (WHERE t.prev_id IS NOT NULL
+                                  AND p.from_on = t.taken_on
+                                  AND NOT EXISTS (
+                                    SELECT 1 FROM company_periods b
+                                     WHERE b.bin = p.bin AND b.to_on = t.prev_on)) AS appeared
+          FROM stats_todo t
+          JOIN company_periods p ON p.from_on <= t.taken_on AND p.to_on >= t.taken_on
+          LEFT JOIN addresses a ON a.id = p.address_id
+          LEFT JOIN territories tr ON tr.id = a.territory_id
+         GROUP BY t.id, coalesce(left(tr.kato, 2), '00')
       ) g
      GROUP BY snapshot_id
   ) x
  WHERE st.snapshot_id = x.snapshot_id;
+
+DROP TABLE stats_todo;
 
 SELECT s.taken_on, st.total, st.appeared, st.disappeared, st.changed
   FROM snapshot_stats st
