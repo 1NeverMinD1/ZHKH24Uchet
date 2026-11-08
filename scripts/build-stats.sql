@@ -126,7 +126,11 @@ UPDATE snapshot_stats st
            jsonb_object_agg(region, jsonb_build_object('total', total, 'appeared', appeared)) AS data
       FROM (
         SELECT t.id AS snapshot_id,
-               coalesce(left(tr.kato, 2), '00') AS region,
+                              CASE
+                 WHEN tr.kato LIKE '5116%' THEN '79'
+                 WHEN left(tr.kato, 2) = '51' THEN '61'
+                 ELSE coalesce(left(tr.kato, 2), '00')
+               END AS region,
                count(*) AS total,
                count(*) FILTER (WHERE t.prev_id IS NOT NULL
                                   AND p.from_on = t.taken_on
@@ -137,7 +141,7 @@ UPDATE snapshot_stats st
           JOIN company_periods p ON p.from_on <= t.taken_on AND p.to_on >= t.taken_on
           LEFT JOIN addresses a ON a.id = p.address_id
           LEFT JOIN territories tr ON tr.id = a.territory_id
-         GROUP BY t.id, coalesce(left(tr.kato, 2), '00')
+                  GROUP BY t.id, region
       ) g
      GROUP BY snapshot_id
   ) x

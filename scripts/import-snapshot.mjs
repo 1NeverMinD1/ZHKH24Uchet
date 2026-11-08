@@ -437,11 +437,12 @@ try {
             house = NULLIF(r.house, ''),
             address = r.addr_text
        FROM (
-         SELECT DISTINCT ON (x.new_key) x.*
+         SELECT DISTINCT ON (m.new_key) m.*
            FROM (
-             SELECT DISTINCT ON (p.address_id)
-                    p.address_id, i.addr_key AS new_key, i.kato,
-                    i.street_type, i.street, i.house, i.addr_text
+             SELECT p.address_id, i.addr_key AS new_key,
+                    min(i.kato) AS kato, min(i.street_type) AS street_type,
+                    min(i.street) AS street, min(i.house) AS house,
+                    min(i.addr_text) AS addr_text, count(*) AS moved
                FROM hx_import i
                JOIN hx_prev p ON p.bin = i.bin
               WHERE i.addr_key <> '' AND i.addr_bad = ''
@@ -449,9 +450,17 @@ try {
                 AND split_part(p.prev_addr_key, '|', 1) <> i.kato
                 AND substr(p.prev_addr_key, strpos(p.prev_addr_key, '|'))
                     = substr(i.addr_key, strpos(i.addr_key, '|'))
-              ORDER BY p.address_id, i.addr_key
-           ) x
-          ORDER BY x.new_key, x.address_id
+              GROUP BY p.address_id, i.addr_key
+           ) m
+           JOIN (
+             SELECT p.address_id, count(*) AS total
+               FROM hx_prev p
+               JOIN hx_import i ON i.bin = p.bin
+              WHERE p.address_id IS NOT NULL
+              GROUP BY p.address_id
+           ) s ON s.address_id = m.address_id
+          WHERE m.moved * 2 > s.total
+          ORDER BY m.new_key, m.moved DESC, m.address_id
        ) r
        LEFT JOIN territories t ON t.level = 3 AND t.kato = r.kato
       WHERE a.id = r.address_id

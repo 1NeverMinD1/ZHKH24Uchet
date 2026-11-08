@@ -3,6 +3,7 @@ import client from "../../api/client";
 import { Link } from "../../i18n/router";
 import { useLocale } from "../../i18n/context";
 import { formatDate } from "../../utils/dates";
+import { unitName } from "../../utils/units";
 import { codeLabel, useFilterOptions } from "../../utils/filterOptions";
 import "./_CompanyHistory.scss";
 
@@ -104,15 +105,23 @@ export default function CompanyHistory({ slug, locked }) {
 
   const value = (text) => <p className="history__value">{text || nobody}</p>;
 
-  const codeBlock = (kind, items, dictionary) => [
+  const codeBlock = (kind, items, dictionary, multiple = false) => [
     t(`history.tag.${kind}`),
     items,
-    (item) =>
-      value(
-        dictionary
-          ? codeLabel(options, dictionary, item.code, locale)
-          : item.code && item.code.split(",").join(", "),
-      ),
+    (item) => {
+      if (!multiple)
+        return value(codeLabel(options, dictionary, item.code, locale));
+      const codes = (item.code || "")
+        .split(",")
+        .map((code) => code.trim())
+        .filter(Boolean);
+      if (codes.length === 0) return value(null);
+      return codes.map((code) => (
+        <p key={code} className="history__value">
+          {codeLabel(options, dictionary, code, locale)}
+        </p>
+      ));
+    },
   ];
 
   const known = (items) => {
@@ -128,7 +137,7 @@ export default function CompanyHistory({ slug, locked }) {
         value(locale === "kk" ? item.kk || item.ru : item.ru || item.kk),
     ],
     codeBlock("oked", data.oked, "oked"),
-    codeBlock("secondary_oked", data.secondaryOked, null),
+    codeBlock("secondary_oked", data.secondaryOked, "oked", true),
     codeBlock("krp", data.krp, "krp"),
     codeBlock("kse", known(data.kse), "kse"),
     codeBlock("kfs", known(data.kfs), "kfs"),
@@ -176,7 +185,16 @@ export default function CompanyHistory({ slug, locked }) {
                 )}
                 {item.unit && (
                   <p className="history__place">
-                    {t("history.card.unit", { unit: item.unit })}
+                    {item.unitNumber || item.unitFloor
+                      ? unitName(
+                          {
+                            kind: item.unitKind,
+                            number: item.unitNumber,
+                            floor: item.unitFloor,
+                          },
+                          t,
+                        )
+                      : t("history.card.unit", { unit: item.unit })}
                   </p>
                 )}
                 {item.id && (

@@ -1,4 +1,7 @@
+import fs from "node:fs";
+import path from "node:path";
 import { factories } from "@strapi/strapi";
+import { renderCompanyCard, summarizeChanges } from "../../../utils/og-image";
 import {
   parseCompanyFilters,
   toDocumentFilters,
@@ -77,6 +80,12 @@ const sortOf = (ctx: any) => {
 
 const byDate = (key: string) => key === "newest" || key === "oldest";
 
+const searchText = (value: string) =>
+  value
+    .replace(/[«»"“”„'`]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 const escapeXml = (value: string) =>
   value
     .replace(/&/g, "&amp;")
@@ -147,13 +156,15 @@ export default factories.createCoreController(
       const bindings: any[] = [];
 
       if (q) {
-        const pattern = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
         if (/^\d+$/.test(q)) {
           where.push("c.bin LIKE ?");
-          bindings.push(pattern);
+          bindings.push(`%${q}%`);
         } else {
-          where.push("(c.name_ru ILIKE ? OR c.name_kk ILIKE ?)");
-          bindings.push(pattern, pattern);
+          for (const word of q.split(" ").filter(Boolean)) {
+            const pattern = `%${word.replace(/[\\%_]/g, "\\$&")}%`;
+            where.push("(c.name_ru ILIKE ? OR c.name_kk ILIKE ?)");
+            bindings.push(pattern, pattern);
+          }
         }
       }
 
@@ -192,7 +203,7 @@ export default factories.createCoreController(
 
     return {
       async search(ctx: any) {
-        const q = String(ctx.query.q || "").trim();
+        const q = searchText(String(ctx.query.q || ""));
         if (!q) {
           return ctx.badRequest("Пустой запрос");
         }
@@ -206,10 +217,15 @@ export default factories.createCoreController(
         const textFilter: any = byBin
           ? { bin: { $contains: q } }
           : {
-              $or: [
-                { name_ru: { $containsi: q } },
-                { name_kk: { $containsi: q } },
-              ],
+              $and: q
+                .split(" ")
+                .filter(Boolean)
+                .map((word) => ({
+                  $or: [
+                    { name_ru: { $containsi: word } },
+                    { name_kk: { $containsi: word } },
+                  ],
+                })),
             };
 
         const parsed = parseCompanyFilters(ctx.query);
@@ -332,6 +348,57 @@ export default factories.createCoreController(
           data: strip(items[0]),
           access: isMember ? "member" : "guest",
         };
+      },
+
+      async ogImage(ctx: any) {
+        const code = codeOf(String(ctx.params.code || ""));
+        if (!code) return ctx.notFound("Компания не найдена");
+
+        const found = await strapi.db.connection.raw(
+          `SELECT bin, name_ru, legal_form, kfs_code, status,
+                  last_seen::text AS last_seen,
+                                    registration_date::text AS registration_date, locality_ru, krp_name_ru
+             FROM companies
+            WHERE slug_code = ?
+            LIMIT 1`,
+          [code],
+        );
+        const company = found.rows[0];
+        if (!company) return ctx.notFound("Компания не найдена");
+
+        const dir = path.join(process.cwd(), ".cache", "og");
+        const file = path.join(
+          dir,
+          `v2-${code}-${company.last_seen || "x"}-${company.status || "x"}.png`,
+        );
+
+        let png: Buffer;
+        if (fs.existsSync(file)) {
+          png = fs.readFileSync(file);
+        } else {
+          const periods = await strapi.db.connection.raw(
+            `SELECT from_on::text AS from_on, to_on::text AS to_on, name_id,
+                    director_id, address_id, oked_code, krp_code
+               FROM company_periods
+              WHERE bin = ?
+              ORDER BY from_on`,
+            [company.bin],
+          );
+          const latest = await strapi.db.connection.raw(
+            "SELECT max(taken_on)::text AS taken_on FROM snapshots WHERE NOT is_test",
+          );
+          const changes = summarizeChanges(
+            periods.rows,
+            latest.rows[0]?.taken_on || "",
+          );
+          png = await renderCompanyCard(company, changes);
+          fs.mkdirSync(dir, { recursive: true });
+          fs.writeFileSync(file, png);
+        }
+
+        ctx.type = "image/png";
+        ctx.set("Cache-Control", "public, max-age=86400");
+        ctx.body = png;
       },
 
       async sitemapIndex(ctx: any) {

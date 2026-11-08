@@ -43,6 +43,8 @@ export const LEGAL_FORMS = [
   "association",
   "fund",
   "institution",
+  "lawyers",
+  "religious",
   "aifc",
   "branch",
   "other",

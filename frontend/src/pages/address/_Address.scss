@@ -13,6 +13,17 @@
     color: #5b6472;
   }
 
+  &__summary {
+    margin: -8px 0 24px;
+    padding: 16px 20px;
+    font-size: 15px;
+    line-height: 1.6;
+    color: #2b3440;
+    background: #f4f7fb;
+    border-left: 4px solid #3a6ea5;
+    border-radius: 8px;
+  }
+
   &__card {
     margin-bottom: 24px;
     padding: 24px;

@@ -208,7 +208,7 @@ const toRecord = (cells, map) => {
     director_name: get("director_name"),
     slug: `${slugName(nameRu)}-${code}`,
     slug_code: code,
-    legal_form: legalFormOf(parts.form),
+    legal_form: legalFormOf(parts.form, nameRu),
     sort_name: sortNameOf(nameRu, parts.inner),
   };
 };

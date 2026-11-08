@@ -11,6 +11,7 @@ import { localizePath } from "../../i18n/locales";
 import { SITE_URL } from "../../config/site";
 import { shortName } from "../../utils/companyName";
 import { pick } from "../../utils/localized";
+import { ownershipOf } from "../../utils/ownership";
 import CompanyHistory from "../../components/history/CompanyHistory";
 import "./_Company.scss";
 
@@ -28,6 +29,16 @@ const formatDate = (value) => {
 
 const truncate = (text, max = 160) =>
   text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
+
+const fitSentences = (parts, max = 160) => {
+  let text = "";
+  for (const part of parts) {
+    if (!part) continue;
+    const next = text ? `${text} ${part}` : part;
+    if (next.length <= max) text = next;
+  }
+  return text || truncate(parts.find(Boolean) || "", max);
+};
 
 function Row({ label, value, locked, lockedText }) {
   return (
@@ -178,16 +189,25 @@ export default function Company() {
   const locality = pick(company, "locality", locale);
   const oked = company.oked_code ? `${company.oked_code} — ${activity}` : "";
   const lockedText = t("company.locked");
+  const ownership = ownershipOf(company.kfs_code);
+  const cardImage = `${String(client.defaults.baseURL || "").replace(/\/$/, "")}/og/company/${company.slug_code || code}.png`;
 
-  const description = truncate(
-    [
-      t("company.seoLead", { name: title, bin: company.bin }),
-      activity && t("company.seoActivity", { value: activity }),
-      locality && t("company.seoLocation", { value: locality }),
-    ]
-      .filter(Boolean)
-      .join(" "),
-  );
+  const description = fitSentences([
+    t("company.seoLead", { name: title, bin: company.bin }),
+    !locked &&
+      company.registration_date &&
+      t("company.seoRegistered", {
+        date: formatDate(company.registration_date),
+      }),
+    company.status === "gone"
+      ? t("company.seoGone", { date: formatDate(company.last_seen) })
+      : t("company.seoActive"),
+    activity && t("company.seoActivity", { value: activity }),
+    locality && t("company.seoLocation", { value: locality }),
+    !locked &&
+      company.director_name &&
+      t("company.seoDirector", { value: company.director_name }),
+  ]);
 
   const crumbs = [
     { name: t("breadcrumbs.home"), path: "/" },
@@ -212,6 +232,7 @@ export default function Company() {
       <SEO
         title={t("company.pageTitle", { name: title, bin: company.bin })}
         description={description}
+        image={cardImage}
       />
       <JsonLd data={schema} />
       <div className="company__card">
@@ -227,6 +248,13 @@ export default function Company() {
             <p className="company__bin">
               {t("company.bin")} {company.bin}
             </p>
+            {ownership && (
+              <p
+                className={`company__ownership company__ownership--${ownership}`}
+              >
+                {t(`ownership.${ownership}`)}
+              </p>
+            )}
             {company.status === "gone" && (
               <p className="company__status company__status--gone">
                 {t("company.goneSince", {
@@ -236,6 +264,14 @@ export default function Company() {
             )}
           </div>
         </div>
+
+        <img
+          className="company__image"
+          src={cardImage}
+          alt={title}
+          width="1200"
+          height="630"
+        />
 
         {locked && (
           <div className="company__notice">

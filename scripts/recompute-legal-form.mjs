@@ -29,7 +29,7 @@ const moves = new Map();
 
 for (const row of rows) {
   const name = row.name_ru || row.name_kk || "";
-  const next = legalFormOf(splitName(name).form);
+  const next = legalFormOf(splitName(name).form, name);
   if (next === row.legal_form) continue;
   changes.push([row.bin, next]);
   const key = `${row.legal_form ?? "null"} -> ${next}`;

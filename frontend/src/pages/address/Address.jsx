@@ -15,6 +15,22 @@ import "./_Address.scss";
 
 const UNITS_PREVIEW = 12;
 
+const pluralIndex = (n) => {
+  const last = n % 10;
+  const tens = n % 100;
+  if (last === 1 && tens !== 11) return 0;
+  if (last >= 2 && last <= 4 && (tens < 12 || tens > 14)) return 1;
+  return 2;
+};
+
+const plural = (template, count) => {
+  const forms = template.split("|");
+  return (forms[pluralIndex(count)] ?? forms[0]).replace(
+    "#",
+    count.toLocaleString("ru-RU"),
+  );
+};
+
 export default function Address() {
   const { id } = useParams();
   const { locale, t } = useLocale();
@@ -157,6 +173,38 @@ export default function Address() {
     { name: info.text, path: `/address/${info.id}` },
   ];
 
+  const summaryText = (() => {
+    const s = info.summary;
+    if (!s) return "";
+    const where = t("address.summary.whereNoPlace", { address: info.text });
+    const now =
+      s.now > 0
+        ? plural(t("address.summary.now"), s.now) +
+          (s.units > 0 ? plural(t("address.summary.units"), s.units) : "")
+        : t("address.summary.nowEmpty");
+    const sentences = [`${where} ${now}.`];
+    if (s.ever > s.now) {
+      sentences.push(
+        `${plural(t("address.summary.ever", { year: s.since }), s.ever)}.`,
+      );
+    }
+    const changes = [];
+    if (s.appeared > 0) {
+      changes.push(plural(t("address.summary.appeared"), s.appeared));
+    }
+    if (s.left > 0) {
+      changes.push(plural(t("address.summary.left"), s.left));
+    }
+    const period = t(
+      s.fullYear ? "address.summary.fullYear" : "address.summary.sinceYear",
+      { year: s.year },
+    );
+    sentences.push(
+      `${period} ${changes.length > 0 ? changes.join(", ") : t("address.summary.noChanges")}.`,
+    );
+    return sentences.join(" ");
+  })();
+
   const nameOf = (item) =>
     shortName(
       (locale === "kk"
@@ -177,6 +225,7 @@ export default function Address() {
         <p className="address__eyebrow">{t("address.title")}</p>
         <h1 className="search__title">{info.text}</h1>
         {place && <p className="address__place">{place}</p>}
+        {summaryText && <p className="address__summary">{summaryText}</p>}
 
         <div className="address__card">
           <h2 className="address__subtitle">{t("address.chartTitle")}</h2>
@@ -315,7 +364,18 @@ export default function Address() {
                   <p className="search__item-meta">
                     {t("company.bin")} {item.bin}
                     {item.unit
-                      ? ` · ${t("address.unit", { unit: item.unit })}`
+                      ? ` · ${
+                          item.unitNumber || item.unitFloor
+                            ? unitName(
+                                {
+                                  kind: item.unitKind,
+                                  number: item.unitNumber,
+                                  floor: item.unitFloor,
+                                },
+                                t,
+                              )
+                            : t("address.unit", { unit: item.unit })
+                        }`
                       : ""}
                   </p>
                 </div>

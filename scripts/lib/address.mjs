@@ -40,7 +40,12 @@ const TYPES = [
 const NUMBERED_TYPES = new Set(["МИКРОРАЙОН", "КВАРТАЛ", "ЖИЛОЙ МАССИВ"]);
 
 const HOUSE_PART =
-  /^(?:дом|здание|строение|участок|земельный участок|дачный участок|д\.|зд\.|стр\.|уч\.)(?![\p{L}])\s*(?:№|N)?\s*(.+)$/iu;
+  /^(?:(?:дом|здание|строение|участок|земельный участок|дачный участок|д\.|зд\.|стр\.|уч\.)(?![\p{L}])\s*(?:№|N)?\s*(.+)|(?:д|зд|стр|уч)(?![\p{L}])\s*(?:№|N)?\s*(\d.*|б\s*[/\\.]?\s*н\.?))$/iu;
+
+const NO_NUMBER =
+  /^(?:(?:д|дом)\.?\s*)?(?:б\s*[/\\.]?\s*н\.?|без\s*номера|нет)$/iu;
+
+const CORPUS_PART = /^(?:к|корп|корпус)\.?\s*(\d+\s?[\p{L}]?)$/iu;
 
 const UNIT_START =
   /^(?:(?:кв|квартира|офис|оф|н\.\s?п|нп|помещение|пом|комната|каб|кабинет)(?![\p{L}])|\d+\s*этаж)/iu;
@@ -158,21 +163,34 @@ export const parseAddress = (raw, kato) => {
     unitStart = 0;
   }
 
-  const buildingParts = parts.slice(
+  const buildingSource = parts.slice(
     0,
     unitStart >= 0 ? unitStart : parts.length,
   );
+  let corpus = "";
+  const buildingParts = buildingSource.filter((part, index) => {
+    const match = index > 0 && part.match(CORPUS_PART);
+    if (!match) return true;
+    if (!corpus) corpus = unify(match[1]).replace(/\s+/g, "");
+    return false;
+  });
   const unit = unitStart >= 0 ? parts.slice(unitStart).join(", ") : "";
 
   let house = "";
   let streetParts = [...buildingParts];
 
   const houseIndex = buildingParts.findIndex((part) => HOUSE_PART.test(part));
+  const noneIndex = buildingParts.findIndex(
+    (part, index) => index > 0 && NO_NUMBER.test(part),
+  );
   if (houseIndex >= 0) {
-    house = unify(
-      squash(buildingParts[houseIndex].match(HOUSE_PART)[1]),
-    ).replace(/\s+/g, "");
+    const houseMatch = buildingParts[houseIndex].match(HOUSE_PART);
+    house = unify(squash(houseMatch[1] ?? houseMatch[2])).replace(/\s+/g, "");
+    if (/^Б[/\\.]?Н\.?$/.test(house)) house = "Б/Н";
     streetParts = buildingParts.slice(0, houseIndex);
+  } else if (noneIndex >= 0) {
+    house = "Б/Н";
+    streetParts = buildingParts.slice(0, noneIndex);
   } else {
     const bareIndex = buildingParts.findIndex(
       (part, index) => index > 0 && BARE_HOUSE.test(part),
@@ -200,8 +218,10 @@ export const parseAddress = (raw, kato) => {
     }
   }
 
+  if (corpus) house = `${house}К${corpus}`;
+
   const street = splitStreet(streetParts.join(", "));
-  const text = buildingParts.join(", ");
+  const text = buildingSource.join(", ");
   const whole = unify(squash(text));
   const key =
     street.name || street.type

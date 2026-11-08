@@ -22,6 +22,12 @@ export default {
     },
     {
       method: "GET",
+      path: "/og/company/:code.png",
+      handler: "company.ogImage",
+      config: { auth: false },
+    },
+    {
+      method: "GET",
       path: "/sitemap.xml",
       handler: "company.sitemapIndex",
       config: { auth: false },

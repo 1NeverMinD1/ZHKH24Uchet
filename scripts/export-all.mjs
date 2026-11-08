@@ -48,7 +48,7 @@ const { rows } = await client.query(
                  SELECT 1 FROM company_periods x
                   WHERE x.bin = lp.bin AND g.taken_on BETWEEN x.from_on AND x.to_on)
           ) AS had_gap,
-          dr.name AS director, t.path_ru AS place, a.address, lp.unit
+                    dr.name AS director, COALESCE(t.path_ru, c.locality_ru) AS place, a.address, lp.unit
      FROM last_period lp
      JOIN span s ON s.bin = lp.bin
      CROSS JOIN latest l

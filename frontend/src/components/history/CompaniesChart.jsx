@@ -41,6 +41,11 @@ const MONTHS = {
   ],
 };
 
+const formatCount = (value) => Number(value || 0).toLocaleString("ru-RU");
+
+const fitSize = (text, width) =>
+  Math.max(9, Math.min(14, width / (text.length * 0.62)));
+
 const niceStep = (value) => {
   const raw = Math.max(value, 1) / 4;
   const power = 10 ** Math.floor(Math.log10(raw));
@@ -84,8 +89,8 @@ const DenseChart = ({ points: allPoints, label }) => {
   const activeY = yOf(active.companies);
   const tipText =
     hovered === null
-      ? String(active.companies)
-      : `${formatDate(active.takenOn)}: ${active.companies}`;
+      ? formatCount(active.companies)
+      : `${formatDate(active.takenOn)}: ${formatCount(active.companies)}`;
   const tipRight = activeX > WIDTH / 2;
 
   return (
@@ -230,7 +235,7 @@ export default function CompaniesChart({ points, label }) {
 
         return (
           <g key={point.takenOn}>
-            <title>{`${formatDate(point.takenOn)}: ${point.companies}`}</title>
+            <title>{`${formatDate(point.takenOn)}: ${formatCount(point.companies)}`}</title>
             <rect
               className={`chart__bar${point.isTest ? " chart__bar--test" : ""}`}
               x={x}
@@ -244,8 +249,11 @@ export default function CompaniesChart({ points, label }) {
               x={center}
               y={y - 8}
               textAnchor="middle"
+              style={{
+                fontSize: `${fitSize(formatCount(point.companies), slot * 0.95)}px`,
+              }}
             >
-              {point.companies}
+              {formatCount(point.companies)}
             </text>
             <text
               className="chart__label"

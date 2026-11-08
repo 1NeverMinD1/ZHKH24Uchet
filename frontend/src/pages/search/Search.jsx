@@ -45,7 +45,8 @@ export default function Search() {
     page: 1,
     failed: false,
   });
-  const [people, setPeople] = useState({ q: null, items: [] });
+  const [people, setPeople] = useState({ q: null, items: [], hasMore: false });
+  const [peopleLoading, setPeopleLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreFailed, setMoreFailed] = useState(false);
 
@@ -94,10 +95,15 @@ export default function Search() {
     client
       .get("/history/directors", { params: { q, limit: 5 } })
       .then(({ data }) => {
-        if (!cancelled) setPeople({ q, items: data.data });
+        if (!cancelled)
+          setPeople({
+            q,
+            items: data.data,
+            hasMore: Boolean(data.meta?.hasMore),
+          });
       })
       .catch(() => {
-        if (!cancelled) setPeople({ q, items: [] });
+        if (!cancelled) setPeople({ q, items: [], hasMore: false });
       });
 
     return () => {
@@ -145,6 +151,29 @@ export default function Search() {
       setMoreFailed(true);
     } finally {
       setLoadingMore(false);
+    }
+  };
+
+  const handlePeopleMore = async () => {
+    const requestQ = q;
+    setPeopleLoading(true);
+    try {
+      const { data } = await client.get("/history/directors", {
+        params: { q: requestQ, limit: 10, offset: people.items.length },
+      });
+      setPeople((previous) =>
+        previous.q === requestQ
+          ? {
+              q: requestQ,
+              items: [...previous.items, ...data.data],
+              hasMore: Boolean(data.meta?.hasMore),
+            }
+          : previous,
+      );
+    } catch {
+      setPeople((previous) => ({ ...previous, hasMore: false }));
+    } finally {
+      setPeopleLoading(false);
     }
   };
 
@@ -239,6 +268,16 @@ export default function Search() {
                 </Link>
               ))}
             </div>
+            {people.hasMore && (
+              <button
+                type="button"
+                className="search__more"
+                onClick={handlePeopleMore}
+                disabled={peopleLoading}
+              >
+                {peopleLoading ? t("common.loading") : t("companies.more")}
+              </button>
+            )}
           </div>
         )}
 

@@ -612,7 +612,9 @@ export default {
         nameRu: row.name_ru,
         nameKk: row.name_kk,
         unit: row.unit,
-        changes: row.changes,
+        changes: (row.changes || []).filter((kind: string) =>
+          requested.includes(kind),
+        ),
         name: {
           from: row.name_from
             ? { ru: row.name_from_ru, kk: row.name_from_kk }
@@ -682,8 +684,10 @@ export default {
               n.name_ru, n.name_kk, p.name_id AS name_key_ru,
               d.id AS director_id, d.name AS director_name,
               a.id AS address_id, a.address AS address_text, t.path_ru AS place, t.path_kk AS place_kk,
-              p.unit, p.unit_id, p.oked_code, p.secondary_oked, p.krp_code, p.kse_code, p.kfs_code
+              p.unit, p.unit_id, u.kind AS unit_kind, u.number AS unit_number, u.floor AS unit_floor,
+              p.oked_code, p.secondary_oked, p.krp_code, p.kse_code, p.kfs_code
          FROM company_periods p
+         LEFT JOIN units u ON u.id = p.unit_id
          LEFT JOIN company_names n ON n.id = p.name_id
          LEFT JOIN directors d ON d.id = p.director_id
          LEFT JOIN addresses a ON a.id = p.address_id
@@ -726,6 +730,9 @@ export default {
           placeKk: item.place_kk,
           unit: item.unit,
           unitId: item.unit_id,
+          unitKind: item.unit_kind,
+          unitNumber: item.unit_number,
+          unitFloor: item.unit_floor,
         })),
         oked: codePeriods(list, "oked_code"),
         secondaryOked: codePeriods(list, "secondary_oked"),
@@ -765,6 +772,50 @@ export default {
 
     const snapshots = await loadSnapshots();
     const requested = ctx.query.date ? String(ctx.query.date) : "";
+
+    const real = snapshots.filter((item) => !item.is_test);
+    const latestReal = real[real.length - 1];
+    let summary: any = null;
+    if (latestReal) {
+      let year = Number(latestReal.taken_on.slice(0, 4));
+      let base = real.find((item) => item.taken_on.startsWith(String(year)));
+      const fullYear = base.id === latestReal.id;
+      if (fullYear) {
+        year -= 1;
+        base =
+          real.find((item) => item.taken_on.startsWith(String(year))) || base;
+      }
+      const counted = await rows(
+        `WITH b AS (
+           SELECT DISTINCT bin FROM company_periods
+            WHERE address_id = ? AND ?::date BETWEEN from_on AND to_on
+         ),
+         e AS (
+           SELECT bin, unit_id FROM company_periods
+            WHERE address_id = ? AND ?::date BETWEEN from_on AND to_on
+         )
+         SELECT (SELECT count(DISTINCT bin) FROM e)::int AS now_count,
+                (SELECT count(DISTINCT unit_id) FROM e)::int AS units_count,
+                (SELECT count(*) FROM (SELECT DISTINCT bin FROM e) x
+                  WHERE NOT EXISTS (SELECT 1 FROM b WHERE b.bin = x.bin))::int AS appeared,
+                (SELECT count(*) FROM b
+                  WHERE NOT EXISTS (SELECT 1 FROM e WHERE e.bin = b.bin))::int AS left_count,
+                (SELECT count(DISTINCT bin) FROM company_periods
+                  WHERE address_id = ?)::int AS ever`,
+        [id, base.taken_on, id, latestReal.taken_on, id],
+      );
+      const c = counted[0];
+      summary = {
+        now: c.now_count,
+        units: c.units_count,
+        ever: c.ever,
+        since: real[0].taken_on.slice(0, 4),
+        year,
+        fullYear,
+        appeared: c.appeared,
+        left: c.left_count,
+      };
+    }
     const snapshot =
       snapshots.find((item) => item.taken_on === requested) ||
       snapshots[snapshots.length - 1];
@@ -784,8 +835,10 @@ export default {
 
     const companies = snapshot
       ? await rows(
-          `SELECT p.bin, p.unit, p.unit_id, c.slug, c.name_ru, c.name_kk, count(*) OVER () AS total
+          `SELECT p.bin, p.unit, p.unit_id, u.kind AS unit_kind, u.number AS unit_number,
+                  u.floor AS unit_floor, c.slug, c.name_ru, c.name_kk, count(*) OVER () AS total
              FROM company_periods p
+             LEFT JOIN units u ON u.id = p.unit_id
              LEFT JOIN companies c ON c.bin = p.bin
             WHERE p.address_id = ?
               AND ?::date BETWEEN p.from_on AND p.to_on
@@ -838,6 +891,7 @@ export default {
         place: row.place,
         placeKk: row.place_kk,
         kato: row.kato,
+        summary,
         timeline: timeline.map((item) => ({
           takenOn: item.taken_on,
           isTest: item.is_test,
@@ -860,6 +914,9 @@ export default {
           slug: item.slug,
           unit: item.unit,
           unitId: item.unit_id,
+          unitKind: item.unit_kind,
+          unitNumber: item.unit_number,
+          unitFloor: item.unit_floor,
           nameRu: item.name_ru,
           nameKk: item.name_kk,
         })),
@@ -959,7 +1016,8 @@ export default {
     if (blocked(ctx)) return ctx.forbidden();
 
     const key = directorKey(String(ctx.query.q || ""));
-    if (key.length < 4) {
+    const words = key.split(" ").filter(Boolean);
+    if (key.length < 4 || words.length === 0) {
       ctx.body = { data: [] };
       return;
     }
@@ -967,6 +1025,10 @@ export default {
     const limit = Math.min(
       Math.max(parseInt(String(ctx.query.limit || "5"), 10) || 5, 1),
       20,
+    );
+    const offset = Math.min(
+      Math.max(parseInt(String(ctx.query.offset || "0"), 10) || 0, 0),
+      200,
     );
 
     const snapshots = await loadSnapshots();
@@ -976,20 +1038,37 @@ export default {
       return;
     }
 
+    const startScore = words
+      .map(
+        () =>
+          "(CASE WHEN name_key LIKE ? OR name_key LIKE ? THEN 1 ELSE 0 END)",
+      )
+      .join(" + ");
+
     const list = await rows(
       `WITH matched AS (
-         SELECT id, name FROM directors WHERE name_key LIKE ?
+         SELECT id, name, ${startScore} AS score FROM directors
+          WHERE ${words.map(() => "name_key LIKE ?").join(" AND ")}
        )
        SELECT m.id, m.name, count(p.bin)::int AS companies
          FROM matched m
          LEFT JOIN company_periods p ON p.director_id = m.id AND p.to_on = ?::date
-        GROUP BY m.id, m.name
-        ORDER BY companies DESC, m.name
-        LIMIT ?`,
-      [`%${key}%`, latest.taken_on, limit],
+        GROUP BY m.id, m.name, m.score
+        ORDER BY m.score DESC, companies DESC, m.name
+        LIMIT ? OFFSET ?`,
+      [
+        ...words.flatMap((word) => [`${word}%`, `% ${word}%`]),
+        ...words.map((word) => `%${word}%`),
+        latest.taken_on,
+        limit + 1,
+        offset,
+      ],
     );
 
-    ctx.body = { data: list };
+    ctx.body = {
+      data: list.slice(0, limit),
+      meta: { hasMore: list.length > limit, offset, limit },
+    };
   },
   async director(ctx: any) {
     if (blocked(ctx)) return ctx.forbidden();
