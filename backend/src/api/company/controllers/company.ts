@@ -3,6 +3,13 @@ import path from "node:path";
 import { factories } from "@strapi/strapi";
 import { renderCompanyCard, summarizeChanges } from "../../../utils/og-image";
 import {
+  companyHead,
+  injectHead,
+  notFoundHead,
+  readIndex,
+} from "../../../utils/seo-page";
+import {
+  LEGAL_FORMS,
   parseCompanyFilters,
   toDocumentFilters,
   toSqlConditions,
@@ -43,7 +50,9 @@ const MEMBER_FIELDS: any = [
   "director_name",
 ];
 
-const SITEMAP_FIELDS: any = ["slug"];
+const SITEMAP_FIELDS: any = ["slug", "updatedAt"];
+const SITEMAP_LOCALES = ["ru", "kk"];
+const DEFAULT_LOCALE = "ru";
 
 const PAGE_SIZE = 20;
 const MAX_PAGE = 50;
@@ -107,6 +116,13 @@ const cached = async (key: string, build: () => Promise<string>) => {
 
 let filtersCache: { at: number; data: any } | null = null;
 
+const CATALOG_PAGE_SIZE = 100;
+const CATALOG_TTL = 60 * 60 * 1000;
+const LETTER_SQL =
+  "(CASE WHEN left(sort_name, 1) ~ '[0-9]' THEN '0' ELSE upper(left(sort_name, 1)) END)";
+const LETTER_PATTERN = /^[0-9A-ZА-ЯЁӘҒҚҢӨҰҮҺІ]$/u;
+let catalogCache: { at: number; data: any } | null = null;
+
 const COUNT_TTL = 10 * 60 * 1000;
 const COUNT_CAP = 100000;
 const counts = new Map<string, { at: number; total: number }>();
@@ -120,11 +136,33 @@ const cachedCount = async (key: string, run: () => Promise<number>) => {
   return total;
 };
 
-const urlset = (urls: string[]) =>
+const urlset = (entries: string[]) =>
   XML_HEAD +
-  '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
-  urls.map((url) => `  <url><loc>${escapeXml(url)}</loc></url>`).join("\n") +
+  '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n' +
+  entries.join("\n") +
   "\n</urlset>\n";
+
+const pageEntries = (base: string, path: string, lastmod = "") => {
+  const versions = SITEMAP_LOCALES.map((code) => ({
+    code,
+    href: `${base}/${code}${path}`,
+  }));
+  const fallback = versions.find((item) => item.code === DEFAULT_LOCALE);
+  const links =
+    versions
+      .map(
+        (item) =>
+          `<xhtml:link rel="alternate" hreflang="${item.code}" href="${escapeXml(item.href)}"/>`,
+      )
+      .join("") +
+    `<xhtml:link rel="alternate" hreflang="x-default" href="${escapeXml((fallback || versions[0]).href)}"/>`;
+  return versions.map(
+    (item) =>
+      `  <url><loc>${escapeXml(item.href)}</loc>${
+        lastmod ? `<lastmod>${lastmod}</lastmod>` : ""
+      }${links}</url>`,
+  );
+};
 
 const sendXml = (ctx: any, xml: string) => {
   ctx.type = "application/xml";
@@ -150,6 +188,23 @@ export default factories.createCoreController(
           GROUP BY ${column}_code
           ORDER BY ${column}_code`,
       );
+
+    let addressCache: { at: number; ids: number[] } | null = null;
+
+    const indexedAddressIds = async () => {
+      if (!addressCache || Date.now() - addressCache.at > SITEMAP_TTL) {
+        const list = await raw(
+          `SELECT address_id AS id
+             FROM company_periods
+            WHERE address_id IS NOT NULL
+            GROUP BY address_id
+           HAVING count(DISTINCT bin) >= 3
+            ORDER BY address_id`,
+        );
+        addressCache = { at: Date.now(), ids: list.map((row: any) => row.id) };
+      }
+      return addressCache.ids;
+    };
 
     const countCapped = async (parsed: any, q: string, dated: boolean) => {
       const where: string[] = [];
@@ -326,6 +381,73 @@ export default factories.createCoreController(
         ctx.body = { data: filtersCache.data };
       },
 
+      async catalogIndex(ctx: any) {
+        if (!catalogCache || Date.now() - catalogCache.at > CATALOG_TTL) {
+          const [letters, forms] = await Promise.all([
+            raw(
+              `SELECT ${LETTER_SQL} AS letter, count(*)::int AS count
+                 FROM companies
+                WHERE sort_name IS NOT NULL AND sort_name <> ''
+                GROUP BY 1`,
+            ),
+            raw(
+              `SELECT legal_form AS code, count(*)::int AS count
+                 FROM companies
+                WHERE legal_form IS NOT NULL
+                GROUP BY 1
+                ORDER BY 2 DESC`,
+            ),
+          ]);
+          catalogCache = { at: Date.now(), data: { letters, forms } };
+        }
+
+        ctx.set("Cache-Control", "public, max-age=3600");
+        ctx.body = { data: catalogCache.data };
+      },
+
+      async catalogList(ctx: any) {
+        const letter = String(ctx.query.letter || "")
+          .toUpperCase()
+          .slice(0, 1);
+        const form = String(ctx.query.form || "");
+        const page = pageOf(ctx);
+
+        let where = "";
+        let value = "";
+        if (letter && LETTER_PATTERN.test(letter)) {
+          where = `${LETTER_SQL} = ?`;
+          value = letter;
+        } else if (form && LEGAL_FORMS.includes(form)) {
+          where = "legal_form = ?";
+          value = form;
+        } else {
+          return ctx.badRequest("Не указана буква или категория");
+        }
+
+        const counted = await strapi.db.connection.raw(
+          `SELECT count(*)::int AS total FROM companies WHERE ${where}`,
+          [value],
+        );
+        const total = counted.rows[0].total;
+        const pages = Math.max(Math.ceil(total / CATALOG_PAGE_SIZE), 1);
+        if (page > pages) return ctx.notFound("Страница не найдена");
+
+        const list = await strapi.db.connection.raw(
+          `SELECT bin, slug, name_ru, name_kk, locality_ru, locality_kk, status
+             FROM companies
+            WHERE ${where}
+            ORDER BY sort_name, bin
+            LIMIT ? OFFSET ?`,
+          [value, CATALOG_PAGE_SIZE, (page - 1) * CATALOG_PAGE_SIZE],
+        );
+
+        ctx.set("Cache-Control", "public, max-age=3600");
+        ctx.body = {
+          data: list.rows,
+          meta: { page, pages, total, pageSize: CATALOG_PAGE_SIZE },
+        };
+      },
+
       async card(ctx: any) {
         const code = codeOf(String(ctx.params.slug || ""));
         if (!code) {
@@ -348,6 +470,195 @@ export default factories.createCoreController(
           data: strip(items[0]),
           access: isMember ? "member" : "guest",
         };
+      },
+
+      async dashboard(ctx: any) {
+        const code = codeOf(String(ctx.params.code || ""));
+        if (!code) return ctx.notFound("Компания не найдена");
+        const db = strapi.db.connection;
+
+        const found = await db.raw(
+          `SELECT bin, kato, oked_code, krp_code,
+                  registration_date::text AS registration_date,
+                  date_part('year', age(current_date, registration_date))::int AS age_years
+             FROM companies
+            WHERE slug_code = ?
+            LIMIT 1`,
+          [code],
+        );
+        const company = found.rows[0];
+        if (!company) return ctx.notFound("Компания не найдена");
+
+        const latestRow = await db.raw(
+          "SELECT max(taken_on)::text AS taken_on FROM snapshots WHERE NOT is_test",
+        );
+        const latestOn = latestRow.rows[0]?.taken_on || "";
+
+        const periods = (
+          await db.raw(
+            `SELECT from_on::text AS from_on, to_on::text AS to_on,
+                    name_id, director_id, address_id, oked_code
+               FROM company_periods
+              WHERE bin = ?
+              ORDER BY from_on`,
+            [company.bin],
+          )
+        ).rows;
+
+        const changes = { director: 0, address: 0, name: 0, oked: 0 };
+        for (let i = 1; i < periods.length; i += 1) {
+          const prev = periods[i - 1];
+          const next = periods[i];
+          if (prev.director_id !== next.director_id) changes.director += 1;
+          if (prev.address_id !== next.address_id) changes.address += 1;
+          if (prev.name_id !== next.name_id) changes.name += 1;
+          if (prev.oked_code !== next.oked_code) changes.oked += 1;
+        }
+
+        const last = periods[periods.length - 1];
+        const active = Boolean(last && latestOn && last.to_on === latestOn);
+
+        let neighbors: any = null;
+        if (active && last.address_id) {
+          const counted = await db.raw(
+            `SELECT count(DISTINCT bin)::int AS count
+               FROM company_periods
+              WHERE address_id = ? AND to_on = ?::date AND bin <> ?`,
+            [last.address_id, latestOn, company.bin],
+          );
+          neighbors = { id: last.address_id, count: counted.rows[0].count };
+        }
+
+        let director: any = null;
+        if (active && last.director_id) {
+          const counted = await db.raw(
+            `SELECT count(DISTINCT bin)::int AS count
+               FROM company_periods
+              WHERE director_id = ? AND to_on = ?::date AND bin <> ?`,
+            [last.director_id, latestOn, company.bin],
+          );
+          director = { id: last.director_id, count: counted.rows[0].count };
+        }
+
+        let peers: any = null;
+        if (company.oked_code && /^\d{9}$/.test(company.kato || "")) {
+          const region = company.kato.slice(0, 2);
+          const krp = /^\d+$/.test(company.krp_code || "")
+            ? Number(company.krp_code)
+            : null;
+          const counted = await db.raw(
+            `SELECT count(*)::int AS total,
+                    count(*) FILTER (WHERE registration_date > ?::date)::int AS younger,
+                    count(*) FILTER (WHERE krp_code ~ '^[0-9]+$')::int AS sized,
+                    count(*) FILTER (
+                      WHERE CASE WHEN krp_code ~ '^[0-9]+$'
+                                 THEN krp_code::int < ? ELSE false END
+                    )::int AS smaller
+               FROM companies
+              WHERE oked_code = ?
+                AND kato LIKE ?
+                AND status IS DISTINCT FROM 'gone'
+                AND bin <> ?`,
+            [
+              company.registration_date || "1900-01-01",
+              krp ?? 0,
+              company.oked_code,
+              `${region}%`,
+              company.bin,
+            ],
+          );
+          const names = await db.raw(
+            "SELECT name_ru, name_kk FROM territories WHERE level = 1 AND kato = ? LIMIT 1",
+            [`${region}0000000`],
+          );
+          const row = counted.rows[0];
+          peers = {
+            oked: company.oked_code,
+            region,
+            regionRu: names.rows[0]?.name_ru || "",
+            regionKk: names.rows[0]?.name_kk || "",
+            total: row.total,
+            olderThan:
+              company.registration_date && row.total > 0
+                ? Math.round((row.younger * 100) / row.total)
+                : null,
+            largerThan:
+              krp !== null && row.sized > 0
+                ? Math.round((row.smaller * 100) / row.sized)
+                : null,
+          };
+        }
+
+        ctx.set("Cache-Control", "public, max-age=3600");
+        ctx.body = {
+          data: {
+            registrationDate: company.registration_date,
+            ageYears: company.age_years,
+            active,
+            changes,
+            neighbors,
+            director,
+            peers,
+          },
+        };
+      },
+
+      async seoPage(ctx: any) {
+        const locale = String(ctx.params.locale || "");
+        if (!["ru", "kk"].includes(locale)) return ctx.notFound();
+
+        let html: string;
+        try {
+          html = readIndex();
+        } catch {
+          return ctx.internalServerError("Не найден собранный index.html");
+        }
+
+        const slug = String(ctx.params.slug || "");
+        const code = codeOf(slug);
+        const found = code
+          ? (
+              await strapi.db.connection.raw(
+                `SELECT bin, slug, slug_code, name_ru, name_kk, legal_form, status,
+                        last_seen::text AS last_seen,
+                        registration_date::text AS registration_date,
+                        oked_name_ru, oked_name_kk, locality_ru, locality_kk,
+                        director_name
+                   FROM companies
+                  WHERE slug_code = ?
+                  LIMIT 1`,
+                [code],
+              )
+            ).rows
+          : [];
+        const company = found[0];
+
+        ctx.type = "text/html; charset=utf-8";
+
+        if (!company) {
+          ctx.status = 404;
+          ctx.body = injectHead(html, notFoundHead(), locale);
+          return;
+        }
+
+        if (company.slug !== slug) {
+          ctx.redirect(`/${locale}/company/${company.slug}`);
+          ctx.status = 301;
+          return;
+        }
+
+        const base = siteUrl();
+        const apiUrl = (process.env.PUBLIC_API_URL || `${base}/api`).replace(
+          /\/$/,
+          "",
+        );
+
+        ctx.set("Cache-Control", "public, max-age=600");
+        ctx.body = injectHead(
+          html,
+          companyHead({ company, locale, siteUrl: base, apiUrl }),
+          locale,
+        );
       },
 
       async ogImage(ctx: any) {
@@ -414,6 +725,12 @@ export default factories.createCoreController(
             files.push(`${base}/sitemap-companies-${i}.xml`);
           }
 
+          const addressIds = await indexedAddressIds();
+          const addressChunks = Math.ceil(addressIds.length / SITEMAP_CHUNK);
+          for (let i = 1; i <= addressChunks; i += 1) {
+            files.push(`${base}/sitemap-addresses-${i}.xml`);
+          }
+
           return (
             XML_HEAD +
             '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
@@ -433,8 +750,37 @@ export default factories.createCoreController(
         const base = siteUrl();
         sendXml(
           ctx,
-          urlset([`${base}/`, `${base}/companies`, `${base}/stats`]),
+          urlset(
+            ["/", "/companies", "/catalog", "/stats"].flatMap((path) =>
+              pageEntries(base, path),
+            ),
+          ),
         );
+      },
+
+      async sitemapAddresses(ctx: any) {
+        const page = parseInt(String(ctx.params.page || ""), 10);
+        if (!Number.isInteger(page) || page < 1) {
+          return ctx.notFound("Карта сайта не найдена");
+        }
+
+        const xml = await cached(`addresses-${page}`, async () => {
+          const ids = (await indexedAddressIds()).slice(
+            (page - 1) * SITEMAP_CHUNK,
+            page * SITEMAP_CHUNK,
+          );
+          if (ids.length === 0) return "";
+          const base = siteUrl();
+          return urlset(
+            ids.flatMap((id) => pageEntries(base, `/address/${id}`)),
+          );
+        });
+
+        if (!xml) {
+          return ctx.notFound("Карта сайта не найдена");
+        }
+
+        sendXml(ctx, xml);
       },
 
       async sitemapCompanies(ctx: any) {
@@ -459,7 +805,13 @@ export default factories.createCoreController(
           return urlset(
             items
               .filter((item: any) => item.slug)
-              .map((item: any) => `${base}/company/${item.slug}`),
+              .flatMap((item: any) =>
+                pageEntries(
+                  base,
+                  `/company/${item.slug}`,
+                  String(item.updatedAt || "").slice(0, 10),
+                ),
+              ),
           );
         });
 

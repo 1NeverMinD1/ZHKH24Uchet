@@ -97,6 +97,45 @@
     border-radius: 8px;
   }
 
+  &__dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    margin: 16px 0 8px;
+  }
+
+  &__tile {
+    display: flex;
+    flex-direction: column;
+    padding: 16px 18px;
+    color: inherit;
+    background: #f4f7fb;
+    border: 1px solid #e3e9f0;
+    border-radius: 8px;
+
+    &--link:hover {
+      border-color: #3a6ea5;
+    }
+  }
+
+  &__tile-label {
+    font-size: 13px;
+    color: #5b6472;
+  }
+
+  &__tile-value {
+    margin-top: 6px;
+    font-size: 24px;
+    font-weight: 700;
+    color: #2b4c7e;
+  }
+
+  &__tile-note {
+    margin-top: 4px;
+    font-size: 13px;
+    color: #8a93a0;
+  }
+
   &__ownership {
     display: inline-block;
     margin: 10px 8px 0 0;

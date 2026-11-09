@@ -1,6 +1,15 @@
 User-agent: *
 Allow: /
-Disallow: /search
-Disallow: /profile
+Allow: /api/og/
+Disallow: /api/
+Disallow: /ru/search
+Disallow: /kk/search
+Disallow: /ru/profile
+Disallow: /kk/profile
+Disallow: /ru/login
+Disallow: /kk/login
+Disallow: /ru/register
+Disallow: /kk/register
+Disallow: /*?
 
 Sitemap: https://example.kz/sitemap.xml

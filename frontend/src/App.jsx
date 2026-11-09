@@ -16,6 +16,8 @@ const Unit = lazy(() => import("./pages/unit/Unit"));
 const Search = lazy(() => import("./pages/search/Search"));
 const Companies = lazy(() => import("./pages/companies/Companies"));
 const Stats = lazy(() => import("./pages/stats/Stats"));
+const Catalog = lazy(() => import("./pages/catalog/Catalog"));
+const CatalogList = lazy(() => import("./pages/catalog/CatalogList"));
 const NotFound = lazy(() => import("./pages/notfound/NotFound"));
 
 const pages = (
@@ -31,6 +33,20 @@ const pages = (
     <Route path="search" element={<Search />} />
     <Route path="companies" element={<Companies />} />
     <Route path="stats" element={<Stats />} />
+    <Route path="catalog" element={<Catalog />} />
+    <Route
+      path="catalog/letter/:letter"
+      element={<CatalogList mode="letter" />}
+    />
+    <Route
+      path="catalog/letter/:letter/:page"
+      element={<CatalogList mode="letter" />}
+    />
+    <Route path="catalog/form/:form" element={<CatalogList mode="form" />} />
+    <Route
+      path="catalog/form/:form/:page"
+      element={<CatalogList mode="form" />}
+    />
     <Route path="*" element={<NotFound />} />
   </>
 );

@@ -277,7 +277,7 @@ const tilesOf = (changes: any, company: any) => {
   ]);
 };
 
-const displayName = (name: string, form: string) => {
+export const displayName = (name: string, form: string) => {
   const text = String(name || "").replace(/''/g, '"');
   const match = text.match(/[«"“„](.+)[»"”]/);
   const inner = match ? match[1].replace(/[«»"“”„]/g, "").trim() : "";

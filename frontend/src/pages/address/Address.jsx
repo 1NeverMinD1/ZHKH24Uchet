@@ -205,6 +205,14 @@ export default function Address() {
     return sentences.join(" ");
   })();
 
+  const addressDescription = (() => {
+    const fallback = t("address.seoDescription", { address: info.text });
+    if (!summaryText) return fallback;
+    if (summaryText.length <= 160) return summaryText;
+    const first = summaryText.split(/(?<=\.)\s/)[0];
+    return first.length <= 160 ? first : fallback;
+  })();
+
   const nameOf = (item) =>
     shortName(
       (locale === "kk"
@@ -216,8 +224,8 @@ export default function Address() {
     <section className="search">
       <SEO
         title={t("address.seoTitle", { address: info.text })}
-        description={t("address.seoDescription", { address: info.text })}
-        noindex
+        description={addressDescription}
+        noindex={!info.summary || info.summary.ever < 3}
       />
       <div className="search__inner">
         <Breadcrumbs items={crumbs} />

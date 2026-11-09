@@ -13,6 +13,7 @@ import { shortName } from "../../utils/companyName";
 import { pick } from "../../utils/localized";
 import { ownershipOf } from "../../utils/ownership";
 import CompanyHistory from "../../components/history/CompanyHistory";
+import CompanyDashboard from "../../components/company/CompanyDashboard";
 import "./_Company.scss";
 
 const codeOf = (value = "") => {
@@ -272,6 +273,8 @@ export default function Company() {
           width="1200"
           height="630"
         />
+
+        {!locked && <CompanyDashboard code={code} />}
 
         {locked && (
           <div className="company__notice">

@@ -8,6 +8,8 @@ import CompanyFilters from "../../components/filters/CompanyFilters";
 import ChangeLines from "../../components/history/ChangeLines";
 import { listParams, readFilters } from "../../utils/companyFilters";
 import { useNavigate } from "../../i18n/useNavigate";
+import { Link } from "../../i18n/router";
+import "../catalog/_Catalog.scss";
 import { useLocale } from "../../i18n/context";
 import { shortName } from "../../utils/companyName";
 import { pick } from "../../utils/localized";
@@ -151,6 +153,9 @@ export default function Companies() {
       <div className="search__inner">
         <Breadcrumbs items={crumbs} />
         <h1 className="search__title">{t("companies.title")}</h1>
+        <Link to="/catalog" className="catalog__entry">
+          {t("catalog.entry")}
+        </Link>
 
         <form className="search__form" onSubmit={handleSubmit}>
           <input

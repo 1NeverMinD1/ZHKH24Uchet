@@ -4,6 +4,8 @@ import { BrowserRouter } from "react-router-dom";
 import "./style.css";
 import App from "./App.jsx";
 
+document.querySelectorAll("[data-ssr]").forEach((node) => node.remove());
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
