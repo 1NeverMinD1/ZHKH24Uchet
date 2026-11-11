@@ -478,9 +478,13 @@ export default factories.createCoreController(
         const db = strapi.db.connection;
 
         const found = await db.raw(
-          `SELECT bin, kato, oked_code, krp_code,
+          `SELECT bin, kato, oked_code, krp_code, status,
                   registration_date::text AS registration_date,
-                  date_part('year', age(current_date, registration_date))::int AS age_years
+                  last_seen::text AS last_seen,
+                  date_part('year', age(
+                    CASE WHEN status = 'gone' AND last_seen IS NOT NULL
+                         THEN last_seen ELSE current_date END,
+                    registration_date))::int AS age_years
              FROM companies
             WHERE slug_code = ?
             LIMIT 1`,
@@ -541,7 +545,7 @@ export default factories.createCoreController(
         }
 
         let peers: any = null;
-        if (company.oked_code && /^\d{9}$/.test(company.kato || "")) {
+        if (active && company.oked_code && /^\d{9}$/.test(company.kato || "")) {
           const region = company.kato.slice(0, 2);
           const krp = /^\d+$/.test(company.krp_code || "")
             ? Number(company.krp_code)
@@ -594,6 +598,7 @@ export default factories.createCoreController(
           data: {
             registrationDate: company.registration_date,
             ageYears: company.age_years,
+            lastSeen: company.last_seen,
             active,
             changes,
             neighbors,

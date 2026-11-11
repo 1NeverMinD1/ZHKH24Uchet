@@ -50,14 +50,20 @@ export default function CompanyDashboard({ code }) {
     const years = d.ageYears;
     tiles.push({
       key: "age",
-      label: t("dashboard.age"),
+      label: t(d.active ? "dashboard.age" : "dashboard.ageGone"),
       value:
         years >= 1
           ? plural(t("dashboard.years"), years)
           : t("dashboard.lessYear"),
-      note: t("dashboard.registered", {
-        date: formatDate(d.registrationDate),
-      }),
+      note:
+        d.active || !d.lastSeen
+          ? t("dashboard.registered", {
+              date: formatDate(d.registrationDate),
+            })
+          : t("dashboard.registeredGone", {
+              from: formatDate(d.registrationDate),
+              to: formatDate(d.lastSeen),
+            }),
     });
   }
 
@@ -110,7 +116,7 @@ export default function CompanyDashboard({ code }) {
         region: d.peers.region,
       }).toString()}`,
     });
-    if (d.peers.largerThan !== null) {
+    if (d.peers.largerThan !== null && d.peers.largerThan > 0) {
       tiles.push({
         key: "size",
         label: t("dashboard.size"),

@@ -249,20 +249,6 @@ export default function Company() {
             <p className="company__bin">
               {t("company.bin")} {company.bin}
             </p>
-            {ownership && (
-              <p
-                className={`company__ownership company__ownership--${ownership}`}
-              >
-                {t(`ownership.${ownership}`)}
-              </p>
-            )}
-            {company.status === "gone" && (
-              <p className="company__status company__status--gone">
-                {t("company.goneSince", {
-                  date: formatDate(company.last_seen),
-                })}
-              </p>
-            )}
           </div>
         </div>
 

@@ -126,6 +126,8 @@ export const dataMessages = {
     "dashboard.years": "# год|# года|# лет",
     "dashboard.lessYear": "меньше года",
     "dashboard.registered": "зарегистрирована {date}",
+    "dashboard.ageGone": "Проработала",
+    "dashboard.registeredGone": "{from} — {to}",
     "dashboard.changes": "Изменений за время наблюдения",
     "dashboard.changesNote":
       "руководитель {director} · адрес {address} · название {name} · ОКЭД {oked}",
@@ -312,6 +314,8 @@ export const dataMessages = {
     "dashboard.years": "# жыл",
     "dashboard.lessYear": "бір жылдан аз",
     "dashboard.registered": "{date} тіркелген",
+    "dashboard.ageGone": "Жұмыс істеді",
+    "dashboard.registeredGone": "{from} — {to}",
     "dashboard.changes": "Бақылау кезеңіндегі өзгерістер",
     "dashboard.changesNote":
       "басшы {director} · мекенжай {address} · атауы {name} · ЭҚЖЖ {oked}",
