@@ -13,6 +13,8 @@ const getInitials = (user) => {
   return (first + last || (user.username || "?")[0]).toUpperCase();
 };
 
+import Logo from "../logo/Logo";
+
 export default function Header() {
   useLocation();
   const navigate = useNavigate();
@@ -65,7 +67,7 @@ export default function Header() {
     <header className="header">
       <div className="header__inner">
         <Link to="/" className="header__logo" onClick={closeAll}>
-          <span className="header__logo-text">ЖКХ24 Учет</span>
+          <Logo className="header__logo-img" />
         </Link>
 
         <button

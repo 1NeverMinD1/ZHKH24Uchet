@@ -214,6 +214,24 @@
     dd {
       font-size: 15px;
       color: #1c1c1c;
+
+      a {
+        color: #3a6ea5;
+
+        &:hover {
+          color: #2b4c7e;
+          text-decoration: underline;
+        }
+      }
     }
+  }
+
+  &__okeds {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 }

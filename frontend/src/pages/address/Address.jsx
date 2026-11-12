@@ -37,6 +37,8 @@ export default function Address() {
   const validId = /^\d+$/.test(id);
   const [date, setDate] = useState("");
   const [unit, setUnit] = useState("");
+  const [unitQuery, setUnitQuery] = useState("");
+  const [query, setQuery] = useState("");
   const [showAllUnits, setShowAllUnits] = useState(false);
   const [data, setData] = useState({
     key: null,
@@ -48,22 +50,24 @@ export default function Address() {
   });
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const key = `${id}|${date}|${unit}`;
+  const key = `${id}|${date}|${unit}|${query}`;
 
   const paramsOf = (extra = {}) => {
     const params = { ...extra };
     if (date) params.date = date;
     if (unit) params.unit = unit;
+    if (query) params.q = query;
     return params;
   };
 
   useEffect(() => {
     if (!validId) return;
     let cancelled = false;
-    const requestKey = `${id}|${date}|${unit}`;
+    const requestKey = `${id}|${date}|${unit}|${query}`;
     const params = {};
     if (date) params.date = date;
     if (unit) params.unit = unit;
+    if (query) params.q = query;
 
     client
       .get(`/history/address/${id}`, { params })
@@ -94,7 +98,7 @@ export default function Address() {
     return () => {
       cancelled = true;
     };
-  }, [id, date, unit, validId]);
+  }, [id, date, unit, query, validId]);
 
   const handleLoadMore = async () => {
     const page = data.page + 1;
@@ -121,6 +125,12 @@ export default function Address() {
     setLoadingMore(false);
   };
 
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const value = String(new FormData(e.currentTarget).get("q") || "").trim();
+    setQuery(value);
+  };
+
   if (!validId || data.status === "notfound") {
     return (
       <NotFound
@@ -130,7 +140,7 @@ export default function Address() {
     );
   }
 
-  if (data.key !== key) {
+  if (!data.key || !data.key.startsWith(`${id}|`)) {
     return (
       <section className="search">
         <SEO title={t("address.title")} noindex />
@@ -153,6 +163,7 @@ export default function Address() {
   }
 
   const { info } = data;
+  const listLoading = data.key !== key;
   const place = locale === "kk" ? info.placeKk || info.place : info.place;
   const timeline = info.timeline;
   const first = timeline[0];
@@ -163,7 +174,18 @@ export default function Address() {
     data.companies.length < data.total &&
     data.page < (info.maxPage ?? Infinity);
   const units = info.units || [];
-  const shownUnits = showAllUnits ? units : units.slice(0, UNITS_PREVIEW);
+  const unitSearch = unitQuery.trim().toLowerCase();
+  const matchedUnits = unitSearch
+    ? units.filter((item) =>
+        [unitName(item, t), item.number, item.label]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(unitSearch)),
+      )
+    : units;
+  const shownUnits =
+    showAllUnits || unitSearch
+      ? matchedUnits
+      : matchedUnits.slice(0, UNITS_PREVIEW);
   const selectedMissing =
     unit && unit !== "none" && !units.some((item) => String(item.id) === unit);
 
@@ -272,6 +294,18 @@ export default function Address() {
               })}
             </p>
 
+            <input
+              className="address__unit-search"
+              type="text"
+              value={unitQuery}
+              onChange={(e) => setUnitQuery(e.target.value)}
+              placeholder={t("address.searchPlaceholder")}
+            />
+
+            {unitSearch && matchedUnits.length === 0 && (
+              <p className="search__message">{t("address.unitsNotFound")}</p>
+            )}
+
             <div className="search__list">
               {shownUnits.map((item) => (
                 <Link
@@ -301,7 +335,7 @@ export default function Address() {
               </p>
             )}
 
-            {units.length > UNITS_PREVIEW && (
+            {!unitSearch && units.length > UNITS_PREVIEW && (
               <button
                 className="search__more"
                 onClick={() => setShowAllUnits((value) => !value)}
@@ -352,15 +386,34 @@ export default function Address() {
             )}
           </div>
 
+          <form className="address__search" onSubmit={handleSearch}>
+            <input
+              className="address__search-input"
+              type="text"
+              name="q"
+              defaultValue={query}
+              placeholder={t("address.companySearchPlaceholder")}
+            />
+            <button className="address__search-button" type="submit">
+              {t("address.companySearchButton")}
+            </button>
+          </form>
+
           <p className="address__count">
-            {t("address.count", { count: data.total.toLocaleString("ru-RU") })}
+            {listLoading
+              ? t("common.loading")
+              : t("address.count", {
+                  count: data.total.toLocaleString("ru-RU"),
+                })}
           </p>
 
           {data.companies.length === 0 && (
             <p className="search__message">{t("address.empty")}</p>
           )}
 
-          <div className="search__list">
+          <div
+            className={`search__list${listLoading ? " address__list--loading" : ""}`}
+          >
             {data.companies.map((item) => (
               <CompanyLink
                 key={item.bin}

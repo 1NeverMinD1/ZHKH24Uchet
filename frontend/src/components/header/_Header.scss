@@ -17,14 +17,15 @@
   }
 
   &__logo {
+    display: flex;
+    align-items: center;
     flex-shrink: 0;
 
-    &-text {
-      text-transform: uppercase;
-      color: variables.$primary-color;
-      font-size: 24px;
-      font-weight: 800;
-      letter-spacing: -0.01em;
+    &-img {
+      display: block;
+      height: 30px;
+      width: auto;
+      color: #0e3056;
     }
   }
 
@@ -239,6 +240,10 @@
   }
 
   @media (max-width: 900px) {
+    &__logo-img {
+      height: 26px;
+    }
+
     &__burger {
       display: flex;
     }

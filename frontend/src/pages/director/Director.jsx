@@ -144,6 +144,25 @@ export default function Director() {
           to: formatDate(item.lastSeen),
         });
 
+  const currentItems = data.companies.filter((item) => item.current);
+  const pastItems = data.companies.filter((item) => !item.current);
+  const pastTotal = Math.max(data.total - (info.currentCompanies || 0), 0);
+
+  const renderItem = (item) => (
+    <CompanyLink
+      key={item.bin}
+      slug={item.slug}
+      className={`search__item${item.current ? "" : " search__item--past"}`}
+    >
+      <div>
+        <p className="search__item-name">{nameOf(item)}</p>
+        <p className="search__item-meta">
+          {t("company.bin")} {item.bin} · {seen(item)}
+        </p>
+      </div>
+    </CompanyLink>
+  );
+
   return (
     <section className="search">
       <SEO
@@ -170,44 +189,36 @@ export default function Director() {
         </div>
 
         <div className="address__card">
-          <h2 className="address__subtitle">{t("director.listTitle")}</h2>
-
-          <div className="search__list director__list">
-            {data.companies.map((item) => (
-              <CompanyLink
-                key={item.bin}
-                slug={item.slug}
-                className="search__item"
-              >
-                <div>
-                  <p className="search__item-name">{nameOf(item)}</p>
-                  <p className="search__item-meta">
-                    {t("company.bin")} {item.bin} · {seen(item)}
-                  </p>
-                </div>
-                <span
-                  className={`director__status${
-                    item.current ? " director__status--current" : ""
-                  }`}
-                >
-                  {item.current
-                    ? t("history.card.current")
-                    : t("director.past")}
-                </span>
-              </CompanyLink>
-            ))}
-          </div>
-
-          {canLoadMore && (
-            <button
-              className="search__more"
-              onClick={handleLoadMore}
-              disabled={loadingMore}
-            >
-              {loadingMore ? t("common.loading") : t("companies.more")}
-            </button>
+          <h2 className="address__subtitle">
+            {t("director.nowTitle")} · {info.currentCompanies || 0}
+          </h2>
+          {currentItems.length > 0 ? (
+            <div className="search__list">{currentItems.map(renderItem)}</div>
+          ) : (
+            <p className="search__message">{t("director.nowEmpty")}</p>
           )}
         </div>
+
+        {pastTotal > 0 && (
+          <div className="address__card address__card--past">
+            <h2 className="address__subtitle">
+              {t("director.pastTitle")} · {pastTotal}
+            </h2>
+            {pastItems.length > 0 && (
+              <div className="search__list">{pastItems.map(renderItem)}</div>
+            )}
+          </div>
+        )}
+
+        {canLoadMore && (
+          <button
+            className="search__more"
+            onClick={handleLoadMore}
+            disabled={loadingMore}
+          >
+            {loadingMore ? t("common.loading") : t("companies.more")}
+          </button>
+        )}
       </div>
     </section>
   );

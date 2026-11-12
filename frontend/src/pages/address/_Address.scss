@@ -100,4 +100,60 @@
     font-size: 14px;
     color: #5b6472;
   }
+
+  &__unit-search,
+  &__search-input {
+    display: block;
+    width: 100%;
+    padding: 11px 14px;
+    font-family: inherit;
+    font-size: 15px;
+    color: #1c1c1c;
+    background: #ffffff;
+    border: 1px solid #dce3ea;
+    border-radius: 8px;
+    outline: none;
+    box-sizing: border-box;
+
+    &:focus {
+      border-color: #3a6ea5;
+    }
+  }
+
+  &__unit-search {
+    margin: 12px 0 16px;
+  }
+
+  &__list--loading {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  &__search {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  &__search-input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__search-button {
+    flex-shrink: 0;
+    padding: 0 22px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    background: #3a6ea5;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+
+    &:hover {
+      background: #2b4c7e;
+    }
+  }
 }

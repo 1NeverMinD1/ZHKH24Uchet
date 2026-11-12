@@ -833,6 +833,24 @@ export default {
       unitBindings.push(Number(unitParam));
     }
 
+    const q = String(ctx.query.q || "")
+      .replace(/[«»"“”„'`]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 100);
+    const searchBindings: any[] = [];
+    const orderBindings: any[] = [];
+    let searchFilter = "";
+    let searchOrder = "";
+    if (q) {
+      const pattern = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
+      searchFilter =
+        "AND (p.bin LIKE ? OR c.name_ru ILIKE ? OR c.name_kk ILIKE ? OR p.unit ILIKE ? OR u.number ILIKE ?)";
+      searchBindings.push(pattern, pattern, pattern, pattern, pattern);
+      searchOrder = "(u.number ILIKE ?) DESC,";
+      orderBindings.push(q);
+    }
+
     const companies = snapshot
       ? await rows(
           `SELECT p.bin, p.unit, p.unit_id, u.kind AS unit_kind, u.number AS unit_number,
@@ -843,12 +861,15 @@ export default {
             WHERE p.address_id = ?
               AND ?::date BETWEEN p.from_on AND p.to_on
               ${unitFilter}
-            ORDER BY c.name_ru NULLS LAST, p.bin
+              ${searchFilter}
+            ORDER BY ${searchOrder} c.name_ru NULLS LAST, p.bin
             LIMIT ? OFFSET ?`,
           [
             id,
             snapshot.taken_on,
             ...unitBindings,
+            ...searchBindings,
+            ...orderBindings,
             PAGE_SIZE,
             (page - 1) * PAGE_SIZE,
           ],

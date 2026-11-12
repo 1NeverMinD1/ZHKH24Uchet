@@ -5,7 +5,7 @@ import { Resvg } from "@resvg/resvg-js";
 
 const WIDTH = 1200;
 const HEIGHT = 630;
-const SITE_NAME = "ЖКХ24 Учет";
+const SITE_NAME = "Bindex";
 const FONT_DIR = path.join(process.cwd(), "assets", "fonts");
 
 let fonts: any[] | null = null;

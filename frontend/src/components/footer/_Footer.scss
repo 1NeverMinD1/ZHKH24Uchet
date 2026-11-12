@@ -3,7 +3,7 @@
 .footer {
   padding: 40px 340px;
   color: white;
-  background: #1f3a63;
+  background: #0e3056;
   &__up {
     padding-bottom: 20px;
     margin-bottom: 20px;
@@ -15,10 +15,18 @@
       flex-direction: column;
       justify-content: space-evenly;
       &-header {
+        margin: 0;
+        line-height: 0;
       }
       &-text {
         color: rgba(255, 255, 255, 0.55);
       }
+    }
+    &-logo {
+      display: block;
+      height: 32px;
+      width: auto;
+      color: #ffffff;
     }
     &-info {
       display: flex;

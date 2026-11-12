@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { displayName } from "./og-image";
 
-const SITE_NAME = "ЖКХ24 Учет";
+const SITE_NAME = "Bindex";
 const LOCALES = ["ru", "kk"];
 const DEFAULT_LOCALE = "ru";
 const OG_LOCALES: Record<string, string> = { ru: "ru_RU", kk: "kk_KZ" };

@@ -5,6 +5,7 @@ import { LOCALES } from "./i18n/locales";
 import LocaleLayout from "./i18n/LocaleLayout";
 import LegacyRedirect from "./i18n/LegacyRedirect";
 import Home from "./pages/home/Home";
+import ScrollToTop from "./components/scroll/ScrollToTop";
 
 const Login = lazy(() => import("./pages/login/Login"));
 const Register = lazy(() => import("./pages/register/Register"));
@@ -53,17 +54,20 @@ const pages = (
 
 export default function App() {
   return (
-    <Routes>
-      {LOCALES.map((locale) => (
-        <Route
-          key={locale}
-          path={`/${locale}`}
-          element={<LocaleLayout locale={locale} />}
-        >
-          {pages}
-        </Route>
-      ))}
-      <Route path="*" element={<LegacyRedirect />} />
-    </Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
+        {LOCALES.map((locale) => (
+          <Route
+            key={locale}
+            path={`/${locale}`}
+            element={<LocaleLayout locale={locale} />}
+          >
+            {pages}
+          </Route>
+        ))}
+        <Route path="*" element={<LegacyRedirect />} />
+      </Routes>
+    </>
   );
 }

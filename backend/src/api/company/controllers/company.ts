@@ -466,8 +466,53 @@ export default factories.createCoreController(
           return ctx.notFound("Компания не найдена");
         }
 
+        const company: any = strip(items[0]);
+
+        if (isMember) {
+          const db = strapi.db.connection;
+          const codes = [
+            ...new Set(
+              String(company.secondary_oked || "").match(/\d{5}/g) || [],
+            ),
+          ];
+          const [names, last] = await Promise.all([
+            codes.length > 0
+              ? db.raw(
+                  `SELECT c.code, x.name_ru, x.name_kk
+                     FROM unnest(string_to_array(?, ',')) AS c(code)
+                     LEFT JOIN LATERAL (
+                       SELECT oked_name_ru AS name_ru, oked_name_kk AS name_kk
+                         FROM companies
+                        WHERE oked_code = c.code AND oked_name_ru IS NOT NULL
+                        LIMIT 1
+                     ) x ON true`,
+                  [codes.join(",")],
+                )
+              : Promise.resolve({ rows: [] }),
+            db.raw(
+              `SELECT address_id, director_id
+                 FROM company_periods
+                WHERE bin = ?
+                ORDER BY from_on DESC
+                LIMIT 1`,
+              [company.bin],
+            ),
+          ]);
+
+          company.secondary_okeds = codes.map((code) => {
+            const row = names.rows.find((item: any) => item.code === code);
+            return {
+              code,
+              name_ru: row?.name_ru || "",
+              name_kk: row?.name_kk || "",
+            };
+          });
+          company.address_id = last.rows[0]?.address_id || null;
+          company.director_id = last.rows[0]?.director_id || null;
+        }
+
         ctx.body = {
-          data: strip(items[0]),
+          data: company,
           access: isMember ? "member" : "guest",
         };
       },

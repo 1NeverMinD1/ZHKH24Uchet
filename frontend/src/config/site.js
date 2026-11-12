@@ -1,4 +1,4 @@
-export const SITE_NAME = "ЖКХ24 Учет";
+export const SITE_NAME = "Bindex";
 
 export const SITE_URL = (
   import.meta.env.VITE_SITE_URL || "http://localhost:5173"

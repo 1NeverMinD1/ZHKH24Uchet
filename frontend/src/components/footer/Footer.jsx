@@ -1,6 +1,8 @@
 import { useLocale } from "../../i18n/context";
 import "./_Footer.scss";
 
+import Logo from "../logo/Logo";
+
 export default function Footer() {
   const { t } = useLocale();
 
@@ -8,7 +10,9 @@ export default function Footer() {
     <footer className="footer">
       <div className="footer__up">
         <div className="footer__up-intro">
-          <h2 className="footer__up-intro-header">ЖКХ24 Учет</h2>
+          <h2 className="footer__up-intro-header">
+            <Logo className="footer__up-logo" />
+          </h2>
           <p className="footer__up-intro-text">{t("footer.intro")}</p>
         </div>
         <div className="footer__up-info">

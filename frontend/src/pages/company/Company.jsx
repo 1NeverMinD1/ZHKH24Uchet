@@ -11,7 +11,6 @@ import { localizePath } from "../../i18n/locales";
 import { SITE_URL } from "../../config/site";
 import { shortName } from "../../utils/companyName";
 import { pick } from "../../utils/localized";
-import { ownershipOf } from "../../utils/ownership";
 import CompanyHistory from "../../components/history/CompanyHistory";
 import CompanyDashboard from "../../components/company/CompanyDashboard";
 import "./_Company.scss";
@@ -26,6 +25,19 @@ const formatDate = (value) => {
   if (!value) return "";
   const [year, month, day] = value.split("-");
   return `${day}.${month}.${year}`;
+};
+
+const filterLink = (param, code, text) =>
+  code && text ? (
+    <Link to={`/companies?${param}=${encodeURIComponent(code)}`}>{text}</Link>
+  ) : (
+    text
+  );
+
+const monthRange = (value) => {
+  const [year, month] = value.split("-");
+  const lastDay = new Date(Number(year), Number(month), 0).getDate();
+  return `registered_from=${year}-${month}-01&registered_to=${year}-${month}-${String(lastDay).padStart(2, "0")}`;
 };
 
 const truncate = (text, max = 160) =>
@@ -189,8 +201,80 @@ export default function Company() {
   const activity = pick(company, "oked_name", locale);
   const locality = pick(company, "locality", locale);
   const oked = company.oked_code ? `${company.oked_code} — ${activity}` : "";
+  const region = /^\d{9}$/.test(company.kato || "")
+    ? company.kato.slice(0, 2)
+    : "";
+
+  const okedValue = company.oked_code ? (
+    <Link to={`/companies?oked=${company.oked_code}`}>{oked}</Link>
+  ) : (
+    ""
+  );
+
+  const secondaryValue = company.secondary_okeds?.length ? (
+    <ul className="company__okeds">
+      {company.secondary_okeds.map((item) => {
+        const name = pick(item, "name", locale);
+        return (
+          <li key={item.code}>
+            <Link to={`/companies?oked=${item.code}`}>
+              {name ? `${item.code} — ${name}` : item.code}
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  ) : (
+    company.secondary_oked
+  );
+
+  const localityParts = locality ? locality.split(", ") : [];
+  const district =
+    region && company.kato.slice(2, 4) !== "00" ? company.kato.slice(0, 4) : "";
+
+  const localityValue =
+    region && localityParts.length > 0 ? (
+      <>
+        <Link to={`/companies?region=${region}`}>{localityParts[0]}</Link>
+        {localityParts.length > 1 && ", "}
+        {localityParts.length > 1 &&
+          (district ? (
+            <Link to={`/companies?region=${region}&district=${district}`}>
+              {localityParts[1]}
+            </Link>
+          ) : (
+            localityParts[1]
+          ))}
+        {localityParts.length > 2 && `, ${localityParts.slice(2).join(", ")}`}
+      </>
+    ) : (
+      locality
+    );
+
+  const registeredValue = company.registration_date ? (
+    <Link to={`/companies?${monthRange(company.registration_date)}`}>
+      {formatDate(company.registration_date)}
+    </Link>
+  ) : (
+    ""
+  );
+
+  const addressValue =
+    company.legal_address && company.address_id ? (
+      <Link to={`/address/${company.address_id}`}>{company.legal_address}</Link>
+    ) : (
+      company.legal_address
+    );
+
+  const directorValue =
+    company.director_name && company.director_id ? (
+      <Link to={`/director/${company.director_id}`}>
+        {company.director_name}
+      </Link>
+    ) : (
+      company.director_name
+    );
   const lockedText = t("company.locked");
-  const ownership = ownershipOf(company.kfs_code);
   const cardImage = `${String(client.defaults.baseURL || "").replace(/\/$/, "")}/og/company/${company.slug_code || code}.png`;
 
   const description = fitSentences([
@@ -279,56 +363,74 @@ export default function Company() {
         <dl className="company__list">
           <Row
             label={t("company.category")}
-            value={
-              company.legal_form ? t(`legalForm.${company.legal_form}`) : ""
-            }
+            value={filterLink(
+              "form",
+              company.legal_form,
+              company.legal_form ? t(`legalForm.${company.legal_form}`) : "",
+            )}
             lockedText={lockedText}
           />
-          <Row label={t("company.oked")} value={oked} lockedText={lockedText} />
+          <Row
+            label={t("company.oked")}
+            value={okedValue}
+            lockedText={lockedText}
+          />
           <Row
             label={t("company.secondaryOked")}
-            value={company.secondary_oked}
+            value={secondaryValue}
             locked={locked}
             lockedText={lockedText}
           />
           <Row
             label={t("company.locality")}
-            value={locality}
+            value={localityValue}
             lockedText={lockedText}
           />
           <Row
             label={t("company.address")}
-            value={company.legal_address}
+            value={addressValue}
             locked={locked}
             lockedText={lockedText}
           />
           <Row
             label={t("company.director")}
-            value={company.director_name}
+            value={directorValue}
             locked={locked}
             lockedText={lockedText}
           />
           <Row
             label={t("company.registered")}
-            value={formatDate(company.registration_date)}
+            value={registeredValue}
             locked={locked}
             lockedText={lockedText}
           />
           <Row
             label={t("company.size")}
-            value={pick(company, "krp_name", locale)}
+            value={filterLink(
+              "krp",
+              company.krp_code,
+              pick(company, "krp_name", locale),
+            )}
             locked={locked}
             lockedText={lockedText}
           />
           <Row
             label={t("company.sector")}
-            value={pick(company, "kse_name", locale)}
+            value={filterLink(
+              "kse",
+              company.kse_code,
+              pick(company, "kse_name", locale),
+            )}
             locked={locked}
             lockedText={lockedText}
           />
           <Row
             label={t("company.ownership")}
-            value={pick(company, "kfs_name", locale)}
+            value={filterLink(
+              "kfs",
+              company.kfs_code,
+              pick(company, "kfs_name", locale),
+            )}
             locked={locked}
             lockedText={lockedText}
           />
