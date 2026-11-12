@@ -76,7 +76,7 @@ export default function CompanyDashboard({ code }) {
     note: t("dashboard.changesNote", d.changes),
   });
 
-  if (d.neighbors) {
+  if (d.neighbors && d.neighbors.count > 0) {
     tiles.push({
       key: "neighbors",
       label: t("dashboard.neighbors"),
@@ -85,7 +85,7 @@ export default function CompanyDashboard({ code }) {
     });
   }
 
-  if (d.director) {
+  if (d.director && d.director.count > 0) {
     tiles.push({
       key: "director",
       label: t("dashboard.director"),
@@ -94,7 +94,8 @@ export default function CompanyDashboard({ code }) {
     });
   }
 
-  if (d.peers) {
+  if (d.peers && d.peers.total > 0) {
+    const enough = d.peers.total >= 10;
     const region =
       locale === "kk"
         ? d.peers.regionKk || d.peers.regionRu
@@ -105,7 +106,7 @@ export default function CompanyDashboard({ code }) {
       value: number(d.peers.total),
       note: [
         region,
-        d.peers.olderThan !== null
+        enough && d.peers.olderThan !== null && d.peers.olderThan > 0
           ? t("dashboard.peersNote", { pct: d.peers.olderThan })
           : "",
       ]
@@ -116,7 +117,7 @@ export default function CompanyDashboard({ code }) {
         region: d.peers.region,
       }).toString()}`,
     });
-    if (d.peers.largerThan !== null && d.peers.largerThan > 0) {
+    if (enough && d.peers.largerThan !== null && d.peers.largerThan > 0) {
       tiles.push({
         key: "size",
         label: t("dashboard.size"),
