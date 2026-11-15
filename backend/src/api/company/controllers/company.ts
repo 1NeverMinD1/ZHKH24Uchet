@@ -61,6 +61,9 @@ const SITEMAP_TTL = 60 * 60 * 1000;
 const FILTERS_TTL = 60 * 60 * 1000;
 const XML_HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n';
 
+const sitemapPrefix = () =>
+  (process.env.SITEMAP_PREFIX || "sitemap").replace(/[^a-z0-9-]/gi, "");
+
 const siteUrl = () =>
   (process.env.SITE_URL || "http://localhost:5173").replace(/\/$/, "");
 
@@ -769,16 +772,17 @@ export default factories.createCoreController(
             .count({});
           const chunks = Math.ceil(total / SITEMAP_CHUNK);
           const base = siteUrl();
-          const files = [`${base}/sitemap-static.xml`];
+          const prefix = sitemapPrefix();
+          const files = [`${base}/${prefix}-static.xml`];
 
           for (let i = 1; i <= chunks; i += 1) {
-            files.push(`${base}/sitemap-companies-${i}.xml`);
+            files.push(`${base}/${prefix}-companies-${i}.xml`);
           }
 
           const addressIds = await indexedAddressIds();
           const addressChunks = Math.ceil(addressIds.length / SITEMAP_CHUNK);
           for (let i = 1; i <= addressChunks; i += 1) {
-            files.push(`${base}/sitemap-addresses-${i}.xml`);
+            files.push(`${base}/${prefix}-addresses-${i}.xml`);
           }
 
           return (

@@ -12,4 +12,3 @@ Disallow: /ru/register
 Disallow: /kk/register
 Disallow: /*?
 
-Sitemap: https://example.kz/sitemap.xml
