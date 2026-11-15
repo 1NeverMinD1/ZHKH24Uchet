@@ -1,8 +1,11 @@
-name: Deploy
+name: Deploy backend
 
 on:
   push:
     branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
 
 concurrency:
@@ -19,4 +22,4 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           command_timeout: 30m
-          script: /home/ubuntu/deploy-bindex.sh
+          script: /home/ubuntu/deploy-bindex.sh backend
