@@ -259,6 +259,123 @@ export default factories.createCoreController(
       return { total: Math.min(total, COUNT_CAP), capped: total > COUNT_CAP };
     };
 
+    const SQL_SORTS: Record<string, string> = {
+      name_asc: "c.sort_name ASC, c.bin",
+      name_desc: "c.sort_name DESC, c.bin",
+      newest: "c.registration_date DESC NULLS LAST, c.sort_name, c.bin",
+      oldest: "c.registration_date ASC NULLS LAST, c.sort_name, c.bin",
+    };
+
+    const searchByName = async (q: string, query: any, page: number) => {
+      const db = strapi.db.connection;
+      const words = q.split(" ").filter(Boolean).slice(0, 8);
+      const escape = (value: string) => value.replace(/[\\%_]/g, "\\$&");
+
+      const rawSql = words.map(() => "s.name ILIKE ?").join(" AND ");
+      const rawBindings = words.map((word) => `%${escape(word)}%`);
+
+      const keyRow = (
+        await db.raw(
+          `SELECT ARRAY[${words.map(() => "search_key(?)").join(", ")}] AS keys`,
+          words,
+        )
+      ).rows[0];
+      const keys: string[] = (keyRow?.keys || []).filter(
+        (key: string) => key && key.trim().length >= 2,
+      );
+      const keySql =
+        keys.length > 0
+          ? keys.map(() => "s.key LIKE ?").join(" AND ")
+          : "false";
+      const keyBindings = keys.map((key) => `%${key}%`);
+
+      const parsed = parseCompanyFilters(query);
+      const company = toSqlConditions(
+        { ...parsed, status: parsed.status || "active" },
+        "c",
+      );
+      const where: string[] = [];
+      const bindings: any[] = [];
+      if (parsed.prefix) {
+        where.push("c.kato LIKE ?");
+        bindings.push(`${parsed.prefix}%`);
+      }
+      if (company.sql) {
+        where.push(company.sql);
+        bindings.push(...company.bindings);
+      }
+      const sortKey = SQL_SORTS[String(query.sort || "")]
+        ? String(query.sort)
+        : "";
+      if (sortKey === "newest" || sortKey === "oldest") {
+        where.push("c.registration_date IS NOT NULL");
+      }
+
+      const rows = (
+        await db.raw(
+          `WITH m AS (
+             SELECT DISTINCT ON (s.bin) s.bin, s.name AS matched_name,
+                    CASE WHEN ${rawSql}
+                         THEN (CASE WHEN s.is_current THEN 0 ELSE 1 END)
+                         ELSE (CASE WHEN s.is_current THEN 2 ELSE 3 END)
+                    END AS rank
+               FROM company_search s
+              WHERE (${rawSql}) OR (${keySql})
+              ORDER BY s.bin, rank
+           )
+           SELECT m.bin, m.matched_name, m.rank, count(*) OVER () AS total
+             FROM m
+             JOIN companies c ON c.bin = m.bin
+            ${where.length > 0 ? `WHERE ${where.join(" AND ")}` : ""}
+            ORDER BY ${sortKey ? SQL_SORTS[sortKey] : "m.rank, c.sort_name, c.bin"}
+            LIMIT ? OFFSET ?`,
+          [
+            ...rawBindings,
+            ...rawBindings,
+            ...keyBindings,
+            ...bindings,
+            PAGE_SIZE,
+            (page - 1) * PAGE_SIZE,
+          ],
+        )
+      ).rows;
+
+      const bins = rows.map((row: any) => row.bin);
+      const items =
+        bins.length > 0
+          ? await strapi.documents("api::company.company").findMany({
+              filters: { bin: { $in: bins } },
+              fields: PUBLIC_FIELDS,
+              limit: bins.length,
+            })
+          : [];
+      const found = new Map(items.map((item: any) => [item.bin, strip(item)]));
+
+      const data = rows
+        .map((row: any) => {
+          const item: any = found.get(row.bin);
+          if (!item) return null;
+          const former =
+            row.rank % 2 === 1 &&
+            row.matched_name !== item.name_ru &&
+            row.matched_name !== item.name_kk;
+          return former ? { ...item, former_name: row.matched_name } : item;
+        })
+        .filter(Boolean);
+
+      const total = rows.length > 0 ? Number(rows[0].total) : 0;
+      return {
+        data,
+        meta: {
+          page,
+          pageSize: PAGE_SIZE,
+          maxPage: MAX_PAGE,
+          total: Math.min(total, COUNT_CAP),
+          totalCapped: total > COUNT_CAP,
+        },
+      };
+    };
+
     return {
       async search(ctx: any) {
         const q = searchText(String(ctx.query.q || ""));
@@ -272,6 +389,10 @@ export default factories.createCoreController(
         }
 
         const byBin = /^\d+$/.test(q);
+        if (!byBin) {
+          ctx.body = await searchByName(q, ctx.query, page);
+          return;
+        }
         const textFilter: any = byBin
           ? { bin: { $contains: q } }
           : {
