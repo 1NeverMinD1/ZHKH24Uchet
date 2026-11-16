@@ -83,6 +83,7 @@ export const translations = {
     "address.unitsNotFound": "Помещений не найдено",
     "address.companySearchPlaceholder": "Название компании или БИН",
     "address.companySearchButton": "Найти",
+    "search.formerName": "Ранее: {name}",
     "footer.basedOn": "Данные основаны на открытых реестрах РК",
   },
   kk: {
@@ -164,6 +165,7 @@ export const translations = {
     "address.unitsNotFound": "Үй-жайлар табылмады",
     "address.companySearchPlaceholder": "Компания атауы немесе БСН",
     "address.companySearchButton": "Іздеу",
+    "search.formerName": "Бұрын: {name}",
     "footer.basedOn": "Деректер ҚР ашық тізілімдеріне негізделген",
   },
 };

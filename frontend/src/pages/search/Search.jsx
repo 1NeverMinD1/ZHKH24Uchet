@@ -339,6 +339,13 @@ export default function Search() {
                       {locality ? ` · ${locality}` : ""}
                       {item.status === "gone" ? ` · ${t("company.gone")}` : ""}
                     </p>
+                    {item.former_name && (
+                      <p className="search__item-former">
+                        {t("search.formerName", {
+                          name: shortName(item.former_name),
+                        })}
+                      </p>
+                    )}
                   </div>
                 </CompanyLink>
               );
