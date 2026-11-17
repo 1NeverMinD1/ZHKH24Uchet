@@ -9,6 +9,7 @@ const PAGE_SIZE = 20;
 const MAX_PAGE = 50;
 const UNITS_LIMIT = 300;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const DIRECTORS_SINCE = "2023-08-01";
 
 const KINDS = [
   "appeared",
@@ -723,7 +724,11 @@ export default {
         })),
         directors: periods(list, "director_id", (item) => ({
           name: item.director_name,
-        })),
+        })).map((item) =>
+          item.from < DIRECTORS_SINCE && item.to >= DIRECTORS_SINCE
+            ? { ...item, from: DIRECTORS_SINCE }
+            : item,
+        ),
         addresses: periods(list, "address_id", (item) => ({
           text: item.address_text,
           place: item.place,
@@ -1114,9 +1119,10 @@ export default {
          FROM snapshots s
          LEFT JOIN company_periods p
            ON p.director_id = ? AND s.taken_on BETWEEN p.from_on AND p.to_on
+        WHERE s.taken_on >= ?::date
         GROUP BY s.id, s.taken_on, s.is_test
         ORDER BY s.taken_on`,
-      [id],
+      [id, DIRECTORS_SINCE],
     );
 
     const companies = await rows(
@@ -1148,7 +1154,11 @@ export default {
           slug: item.slug,
           nameRu: item.name_ru,
           nameKk: item.name_kk,
-          firstSeen: item.first_seen,
+          firstSeen:
+            item.first_seen < DIRECTORS_SINCE &&
+            item.last_seen >= DIRECTORS_SINCE
+              ? DIRECTORS_SINCE
+              : item.first_seen,
           lastSeen: item.last_seen,
           current: item.current,
         })),

@@ -854,7 +854,7 @@ export default factories.createCoreController(
         const dir = path.join(process.cwd(), ".cache", "og");
         const file = path.join(
           dir,
-          `v2-${code}-${company.last_seen || "x"}-${company.status || "x"}.png`,
+          `v3-${code}-${company.last_seen || "x"}-${company.status || "x"}.png`,
         );
 
         let png: Buffer;

@@ -240,7 +240,10 @@ export const summarizeChanges = (periods: any[], latestOn: string) => {
     year,
     krpTrend,
     directorChanged: Boolean(base) && base.director_id !== last.director_id,
-    directorSince: sinceOf("director_id"),
+    directorSince:
+      last.to_on >= "2023-08-01"
+        ? String(Math.max(Number(sinceOf("director_id")), 2023))
+        : sinceOf("director_id"),
     addressChanged: Boolean(base) && base.address_id !== last.address_id,
     addressSince: sinceOf("address_id"),
     frequent: recent >= 3,
