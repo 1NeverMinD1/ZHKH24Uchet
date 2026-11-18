@@ -2,22 +2,39 @@
 
 .info__source {
   margin-top: 40px;
-  padding: 40px 340px;
+  padding: 40px max(20px, calc((100% - 1240px) / 2));
   background: #dcecfc;
+
   &-title {
     margin-bottom: 20px;
     font-size: variables.$header-size;
     color: variables.$primary-color;
   }
+
   &-blocks {
     display: flex;
-    gap: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+
     &-block {
+      padding: 6px 12px;
       color: variables.$primary-color;
-      border-radius: 5px;
-      border: 1px solid rgba($color: #ffefef, $alpha: 0.2);
-      padding: 5px 10px;
-      background: white;
+      background: #ffffff;
+      border: 1px solid #cfdceb;
+      border-radius: 6px;
+    }
+  }
+
+  @media (max-width: 600px) {
+    margin-top: 28px;
+    padding: 28px 20px;
+
+    &-title {
+      font-size: 24px;
+    }
+
+    &-blocks {
+      gap: 8px;
     }
   }
 }

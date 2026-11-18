@@ -84,6 +84,7 @@ export const translations = {
     "address.companySearchPlaceholder": "Название компании или БИН",
     "address.companySearchButton": "Найти",
     "search.formerName": "Ранее: {name}",
+    "filters.toggle": "Фильтры",
     "footer.basedOn": "Данные основаны на открытых реестрах РК",
   },
   kk: {
@@ -166,6 +167,7 @@ export const translations = {
     "address.companySearchPlaceholder": "Компания атауы немесе БСН",
     "address.companySearchButton": "Іздеу",
     "search.formerName": "Бұрын: {name}",
+    "filters.toggle": "Сүзгілер",
     "footer.basedOn": "Деректер ҚР ашық тізілімдеріне негізделген",
   },
 };

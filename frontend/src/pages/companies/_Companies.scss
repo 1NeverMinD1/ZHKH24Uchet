@@ -1,9 +1,71 @@
 .filters {
   margin-bottom: 24px;
-  padding: 20px 24px;
-  background: #ffffff;
-  border: 1px solid #dce3ea;
-  border-radius: 12px;
+
+  &__bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  &__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2b4c7e;
+    background: #ffffff;
+    border: 1px solid #dce3ea;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+
+    &:hover,
+    &[aria-expanded="true"] {
+      border-color: #3a6ea5;
+    }
+  }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #ffffff;
+    background: #3a6ea5;
+    border-radius: 999px;
+  }
+
+  &__chevron {
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid #5b6472;
+    border-bottom: 2px solid #5b6472;
+    transform: rotate(45deg) translateY(-2px);
+    transition: transform 0.2s ease;
+
+    &--open {
+      transform: rotate(-135deg) translateY(-2px);
+    }
+  }
+
+  &__panel {
+    margin-top: 12px;
+    padding: 20px 24px;
+    background: #ffffff;
+    border: 1px solid #dce3ea;
+    border-radius: 12px;
+
+    > .filters__row:first-child {
+      margin-top: 0;
+    }
+  }
 
   &__title {
     font-size: 15px;

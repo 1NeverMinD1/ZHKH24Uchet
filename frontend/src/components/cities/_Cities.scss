@@ -1,61 +1,99 @@
 @use "./../../styles/variables";
 
 .sities {
-  margin-inline: 350px;
-  padding-inline: 0px;
-  margin-top: 40px;
+  width: min(1240px, 100% - 40px);
+  margin: 40px auto 0;
+
   &__intro {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid rgba($color: #000000, $alpha: 0.2);
-    margin-bottom: 40px;
+    gap: 16px;
+    margin-bottom: 24px;
     padding-bottom: 20px;
+    border-bottom: 1px solid rgba($color: #000000, $alpha: 0.2);
+
     &-title {
       font-size: variables.$header-size;
       color: variables.$primary-color;
     }
+
     &-all {
+      flex-shrink: 0;
       color: variables.$primary-color;
+
       &:hover {
         cursor: pointer;
       }
     }
   }
+
   &__blocks {
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    border-top: 1px solid rgba($color: #000000, $alpha: 0.2);
-    padding-top: 20px;
+
     &-block {
-      justify-content: space-between;
-      padding-bottom: 20px;
       display: flex;
-      gap: 10px;
-      border-bottom: 1px solid rgba($color: #000000, $alpha: 0.2);
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid rgba($color: #000000, $alpha: 0.12);
+
       &-left {
-        padding-right: 40%;
-        width: 50%;
         display: flex;
+        align-items: center;
         gap: 20px;
-        &-num {
-        }
+        min-width: 0;
+
         &-intro {
           color: variables.$primary-color;
+          font-weight: 600;
         }
       }
+
+      &-num {
+        flex-shrink: 0;
+        width: 24px;
+        color: variables.$secondary-color;
+      }
+
       &-right {
-        width: 50%;
         display: flex;
-        padding-left: 20%;
-        justify-content: space-between;
+        align-items: center;
+        gap: 40px;
+        flex-shrink: 0;
+
         &-kat {
           color: variables.$secondary-color;
           font-size: 14px;
         }
-        &-text {
-        }
+      }
+    }
+  }
+
+  @media (max-width: 600px) {
+    margin-top: 28px;
+
+    &__intro-title {
+      font-size: 24px;
+    }
+
+    &__blocks-block {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 14px 0;
+
+      &-left {
+        gap: 12px;
+      }
+
+      &-right {
+        width: 100%;
+        justify-content: space-between;
+        gap: 12px;
+        padding-left: 36px;
       }
     }
   }

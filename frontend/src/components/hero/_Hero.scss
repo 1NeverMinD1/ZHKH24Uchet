@@ -187,4 +187,43 @@
       padding: 12px 18px;
     }
   }
+
+  @media (max-width: 600px) {
+    padding: 36px 0 44px;
+
+    &__inner {
+      gap: 28px;
+    }
+
+    &__title {
+      font-size: 30px;
+
+      &-accent {
+        white-space: normal;
+      }
+    }
+
+    &__intro {
+      margin-top: 14px;
+      font-size: 16px;
+    }
+
+    &__search {
+      flex-wrap: wrap;
+      margin-top: 24px;
+      padding: 6px 6px 6px 14px;
+
+      &-input {
+        padding: 12px 4px;
+      }
+
+      &-button {
+        width: 100%;
+      }
+    }
+
+    &__aside {
+      padding: 20px;
+    }
+  }
 }
