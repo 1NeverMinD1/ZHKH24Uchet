@@ -12,16 +12,16 @@ export default function Tutorial() {
 
   return (
     <div className="tutorial">
-      <h2 className="tutorial__title">{t("tutorial.title")}</h2>
+      <h2 className="tutorial__title">{t("howto.title")}</h2>
       <div className="tutorial__blocks">
         {STEPS.map((step) => (
           <div className="tutorial__blocks-block" key={step.key}>
             <p className="tutorial__blocks-block-num">{step.num}</p>
             <p className="tutorial__blocks-block-intro">
-              {t(`tutorial.${step.key}.title`)}
+              {t(`howto.${step.key}.title`)}
             </p>
             <p className="tutorial__blocks-block-text">
-              {t(`tutorial.${step.key}.text`)}
+              {t(`howto.${step.key}.text`)}
             </p>
           </div>
         ))}

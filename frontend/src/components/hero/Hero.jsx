@@ -4,7 +4,7 @@ import { useLocale } from "../../i18n/context";
 import Summary from "../summary/Sumary";
 import "./_Hero.scss";
 
-const EXAMPLES = ["ЖЕЗКАЗГАНРЕДМЕТ", "030340002448"];
+const EXAMPLES = ["E-KNOT", "200940024764"];
 
 export default function Hero() {
   const navigate = useNavigate();
@@ -26,12 +26,12 @@ export default function Hero() {
     <section className="hero">
       <div className="hero__inner">
         <div className="hero__content">
-          <span className="hero__badge">{t("hero.badge")}</span>
+          <span className="hero__badge">{t("hero.badgeData")}</span>
           <h1 className="hero__title">
             {t("hero.titleStart")}{" "}
             <span className="hero__title-accent">{t("hero.titleAccent")}</span>
           </h1>
-          <p className="hero__intro">{t("hero.intro")}</p>
+          <p className="hero__intro">{t("hero.introData")}</p>
 
           <form className="hero__search" onSubmit={handleSubmit}>
             <svg
@@ -52,7 +52,7 @@ export default function Hero() {
             <input
               className="hero__search-input"
               type="text"
-              placeholder={t("hero.placeholder")}
+              placeholder={t("hero.placeholderBin")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />

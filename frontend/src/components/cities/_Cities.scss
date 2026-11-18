@@ -9,7 +9,7 @@
     justify-content: space-between;
     align-items: center;
     gap: 16px;
-    margin-bottom: 24px;
+    margin-bottom: 8px;
     padding-bottom: 20px;
     border-bottom: 1px solid rgba($color: #000000, $alpha: 0.2);
 
@@ -23,7 +23,7 @@
       color: variables.$primary-color;
 
       &:hover {
-        cursor: pointer;
+        text-decoration: underline;
       }
     }
   }
@@ -37,8 +37,14 @@
       justify-content: space-between;
       align-items: center;
       gap: 16px;
-      padding: 16px 0;
+      padding: 16px 8px;
+      color: inherit;
       border-bottom: 1px solid rgba($color: #000000, $alpha: 0.12);
+      transition: background 0.2s ease;
+
+      &:hover {
+        background: rgba(variables.$primary-color, 0.05);
+      }
 
       &-left {
         display: flex;
@@ -47,8 +53,8 @@
         min-width: 0;
 
         &-intro {
-          color: variables.$primary-color;
           font-weight: 600;
+          color: variables.$primary-color;
         }
       }
 
@@ -58,16 +64,9 @@
         color: variables.$secondary-color;
       }
 
-      &-right {
-        display: flex;
-        align-items: center;
-        gap: 40px;
+      &-count {
         flex-shrink: 0;
-
-        &-kat {
-          color: variables.$secondary-color;
-          font-size: 14px;
-        }
+        color: variables.$secondary-color;
       }
     }
   }
@@ -80,20 +79,14 @@
     }
 
     &__blocks-block {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 6px;
-      padding: 14px 0;
+      padding: 14px 4px;
 
       &-left {
         gap: 12px;
       }
 
-      &-right {
-        width: 100%;
-        justify-content: space-between;
-        gap: 12px;
-        padding-left: 36px;
+      &-count {
+        font-size: 14px;
       }
     }
   }
