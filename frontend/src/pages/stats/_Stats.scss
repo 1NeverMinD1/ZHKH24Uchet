@@ -128,4 +128,38 @@
       color: #6b7280;
     }
   }
+
+  @media (max-width: 700px) {
+    &__head {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    &__select {
+      width: 100%;
+      min-width: 0;
+    }
+
+    &__grid {
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    &__card {
+      padding: 12px;
+    }
+
+    &__value {
+      font-size: 20px;
+    }
+
+    &__table {
+      font-size: 13px;
+
+      th,
+      td {
+        padding: 8px 6px;
+      }
+    }
+  }
 }

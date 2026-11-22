@@ -234,4 +234,68 @@
     padding: 0;
     list-style: none;
   }
+
+  @media (max-width: 700px) {
+    padding: 20px 12px;
+
+    &__card {
+      padding: 20px 16px;
+    }
+
+    &__head {
+      flex-direction: column;
+      gap: 12px;
+      padding-bottom: 16px;
+    }
+
+    &__name {
+      font-size: 22px;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    &__name-kk {
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
+
+    &__notice {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+
+      &-actions {
+        flex-wrap: wrap;
+        white-space: normal;
+      }
+    }
+
+    &__dashboard {
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    &__tile {
+      padding: 12px 14px;
+    }
+
+    &__tile-value {
+      font-size: 20px;
+    }
+
+    &__row {
+      grid-template-columns: 1fr;
+      gap: 4px;
+      padding: 12px 0;
+
+      dt {
+        font-size: 13px;
+      }
+
+      dd {
+        overflow-wrap: anywhere;
+      }
+    }
+  }
 }
