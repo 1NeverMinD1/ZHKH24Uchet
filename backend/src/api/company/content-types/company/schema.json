@@ -44,6 +44,11 @@
     "legal_form": { "type": "string" },
     "sort_name": { "type": "string" },
     "status": { "type": "string" },
-    "last_seen": { "type": "date" }
+    "last_seen": { "type": "date" },
+    "zhkh_type": {
+      "type": "enumeration",
+      "enum": ["osi", "ksk", "uk", "service"]
+    },
+    "zhkh_registry": { "type": "boolean", "default": false }
   }
 }

@@ -538,6 +538,119 @@ export interface ApiCompanyCompany extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    zhkh_registry: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    zhkh_type: Schema.Attribute.Enumeration<['osi', 'ksk', 'uk', 'service']>;
+  };
+}
+
+export interface ApiComplexComplex extends Struct.CollectionTypeSchema {
+  collectionName: 'complexes';
+  info: {
+    displayName: 'Complex';
+    pluralName: 'complexes';
+    singularName: 'complex';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    apartments: Schema.Attribute.Integer;
+    city: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    houses: Schema.Attribute.Relation<'oneToMany', 'api::house.house'>;
+    kato: Schema.Attribute.String;
+    latitude: Schema.Attribute.Decimal;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::complex.complex'
+    > &
+      Schema.Attribute.Private;
+    longitude: Schema.Attribute.Decimal;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    slug: Schema.Attribute.UID<'name'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiHouseManagementHouseManagement
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'house_managements';
+  info: {
+    displayName: 'House management';
+    pluralName: 'house-managements';
+    singularName: 'house-management';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    company: Schema.Attribute.Relation<'manyToOne', 'api::company.company'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    ended_at: Schema.Attribute.Date;
+    house: Schema.Attribute.Relation<'manyToOne', 'api::house.house'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::house-management.house-management'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    role: Schema.Attribute.Enumeration<['osi', 'ksk', 'uk', 'service']> &
+      Schema.Attribute.Required;
+    service_kind: Schema.Attribute.String;
+    source: Schema.Attribute.String;
+    started_at: Schema.Attribute.Date;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiHouseHouse extends Struct.CollectionTypeSchema {
+  collectionName: 'houses';
+  info: {
+    displayName: 'House';
+    pluralName: 'houses';
+    singularName: 'house';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    address: Schema.Attribute.String & Schema.Attribute.Required;
+    address_id: Schema.Attribute.Integer & Schema.Attribute.Unique;
+    apartments: Schema.Attribute.Integer;
+    city: Schema.Attribute.String;
+    complex: Schema.Attribute.Relation<'manyToOne', 'api::complex.complex'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    floors: Schema.Attribute.Integer;
+    kato: Schema.Attribute.String;
+    latitude: Schema.Attribute.Decimal;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::house.house'> &
+      Schema.Attribute.Private;
+    longitude: Schema.Attribute.Decimal;
+    managements: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::house-management.house-management'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    slug: Schema.Attribute.UID<'address'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    year_built: Schema.Attribute.Integer;
   };
 }
 
@@ -1064,6 +1177,9 @@ declare module '@strapi/strapi' {
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
       'api::company.company': ApiCompanyCompany;
+      'api::complex.complex': ApiComplexComplex;
+      'api::house-management.house-management': ApiHouseManagementHouseManagement;
+      'api::house.house': ApiHouseHouse;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
       'plugin::i18n.locale': PluginI18NLocale;

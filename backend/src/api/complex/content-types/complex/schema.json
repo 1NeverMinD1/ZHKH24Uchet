@@ -1,0 +1,29 @@
+{
+  "kind": "collectionType",
+  "collectionName": "complexes",
+  "info": {
+    "singularName": "complex",
+    "pluralName": "complexes",
+    "displayName": "Complex"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": { "type": "string", "required": true },
+    "slug": { "type": "uid", "targetField": "name" },
+    "city": { "type": "string" },
+    "kato": { "type": "string" },
+    "description": { "type": "text" },
+    "apartments": { "type": "integer" },
+    "latitude": { "type": "decimal" },
+    "longitude": { "type": "decimal" },
+    "houses": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::house.house",
+      "mappedBy": "complex"
+    }
+  }
+}

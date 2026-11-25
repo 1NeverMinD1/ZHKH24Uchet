@@ -1,0 +1,35 @@
+{
+  "kind": "collectionType",
+  "collectionName": "house_managements",
+  "info": {
+    "singularName": "house-management",
+    "pluralName": "house-managements",
+    "displayName": "House management"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "house": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::house.house",
+      "inversedBy": "managements"
+    },
+    "company": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::company.company"
+    },
+    "role": {
+      "type": "enumeration",
+      "enum": ["osi", "ksk", "uk", "service"],
+      "required": true
+    },
+    "service_kind": { "type": "string" },
+    "started_at": { "type": "date" },
+    "ended_at": { "type": "date" },
+    "source": { "type": "string" }
+  }
+}

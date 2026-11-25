@@ -1,0 +1,37 @@
+{
+  "kind": "collectionType",
+  "collectionName": "houses",
+  "info": {
+    "singularName": "house",
+    "pluralName": "houses",
+    "displayName": "House"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "address": { "type": "string", "required": true },
+    "slug": { "type": "uid", "targetField": "address" },
+    "city": { "type": "string" },
+    "kato": { "type": "string" },
+    "address_id": { "type": "integer", "unique": true },
+    "apartments": { "type": "integer" },
+    "floors": { "type": "integer" },
+    "year_built": { "type": "integer" },
+    "latitude": { "type": "decimal" },
+    "longitude": { "type": "decimal" },
+    "complex": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::complex.complex",
+      "inversedBy": "houses"
+    },
+    "managements": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::house-management.house-management",
+      "mappedBy": "house"
+    }
+  }
+}
