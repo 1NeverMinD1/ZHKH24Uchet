@@ -3,7 +3,7 @@ export const authMessages = {
     "login.seoTitle": "Вход",
     "login.title": "Вход через ЭЦП",
     "login.edsText":
-      "Войдите ключом AUTH физического или юридического лица. При первом входе аккаунт создаётся автоматически.",
+      "Войдите с помощью ЭЦП физического или юридического лица. При первом входе аккаунт создаётся автоматически.",
     "login.edsSubmit": "Войти через ЭЦП",
     "login.wait": "Подождите...",
     "login.ncalayerDownload": "Скачать NCALayer",
@@ -18,8 +18,7 @@ export const authMessages = {
     "login.errors.SIGNATURE_INVALID": "Подпись не прошла проверку.",
     "login.errors.CERT_NOT_FOUND": "В подписи не найден сертификат.",
     "login.errors.CERT_INVALID": "Сертификат недействителен или просрочен.",
-    "login.errors.NOT_AUTH_KEY":
-      "Для входа нужен ключ аутентификации (AUTH), а не ключ для подписи.",
+    "login.errors.NOT_AUTH_KEY": "Этот ключ не подходит для входа.",
     "login.errors.CERT_REVOKED": "Сертификат отозван.",
     "login.errors.IIN_NOT_FOUND": "В сертификате не найден ИИН.",
     "login.errors.USER_BLOCKED": "Ваш аккаунт заблокирован администратором.",
@@ -60,7 +59,7 @@ export const authMessages = {
     "login.seoTitle": "Кіру",
     "login.title": "ЭЦҚ арқылы кіру",
     "login.edsText":
-      "Жеке немесе заңды тұлғаның AUTH кілтімен кіріңіз. Алғаш кірген кезде аккаунт автоматты түрде жасалады.",
+      "Жеке немесе заңды тұлғаның ЭЦҚ-сы арқылы кіріңіз. Алғаш кірген кезде аккаунт автоматты түрде жасалады.",
     "login.edsSubmit": "ЭЦҚ арқылы кіру",
     "login.wait": "Күте тұрыңыз...",
     "login.ncalayerDownload": "NCALayer жүктеп алу",
@@ -75,8 +74,7 @@ export const authMessages = {
     "login.errors.SIGNATURE_INVALID": "Қолтаңба тексеруден өтпеді.",
     "login.errors.CERT_NOT_FOUND": "Қолтаңбадан сертификат табылмады.",
     "login.errors.CERT_INVALID": "Сертификат жарамсыз немесе мерзімі өткен.",
-    "login.errors.NOT_AUTH_KEY":
-      "Кіру үшін қол қоюға арналған кілт емес, аутентификация кілті (AUTH) қажет.",
+    "login.errors.NOT_AUTH_KEY": "Бұл кілт жүйеге кіруге жарамайды.",
     "login.errors.CERT_REVOKED": "Сертификат кері шақырылған.",
     "login.errors.IIN_NOT_FOUND": "Сертификаттан ЖСН табылмады.",
     "login.errors.USER_BLOCKED": "Аккаунтыңызды әкімші бұғаттады.",

@@ -45,7 +45,7 @@ export function signAuth(dataB64, locale = "ru") {
               digested: false,
               tsaProfile: {},
             },
-            signerParams: { extKeyUsageOids: ["1.3.6.1.5.5.7.3.2"], chain: [] },
+            signerParams: { extKeyUsageOids: [], chain: [] },
             locale: locale === "kk" ? "kk" : "ru",
           },
         }),

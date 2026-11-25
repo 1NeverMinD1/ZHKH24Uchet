@@ -83,7 +83,8 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
       : null;
     if (!cert) return { error: "CERT_NOT_FOUND" };
     if (cert.valid !== true) return { error: "CERT_INVALID" };
-    if (cert.keyUsage !== "AUTH") return { error: "NOT_AUTH_KEY" };
+    if (!["AUTH", "SIGN"].includes(cert.keyUsage))
+      return { error: "NOT_AUTH_KEY" };
     const revocations = Array.isArray(cert.revocations) ? cert.revocations : [];
     if (
       revocations.length === 0 ||
