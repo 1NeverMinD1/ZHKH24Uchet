@@ -12,8 +12,8 @@ const pageOf = (value: unknown) =>
   Math.max(1, parseInt(String(value || "1"), 10) || 1);
 
 const CITY_BY_KATO = `
-  (select t.name_ru from territories t where t.kato = c.kato order by t.level desc limit 1) as city_ru,
-  (select t.name_kk from territories t where t.kato = c.kato order by t.level desc limit 1) as city_kk`;
+  zhkh_city((select t.id from territories t where t.kato = c.kato order by t.level desc limit 1), 'ru') as city_ru,
+  zhkh_city((select t.id from territories t where t.kato = c.kato order by t.level desc limit 1), 'kk') as city_kk`;
 
 const CURRENT_COUNTS = `
   select cl.company_id,
@@ -99,7 +99,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
         `select h.address_id, h.address, h.apartments, m.role, m.service_kind,
                 to_char(m.started_at, 'YYYY-MM-DD') as started_at,
                 to_char(m.ended_at, 'YYYY-MM-DD') as ended_at,
-                t.name_ru as city_ru, t.name_kk as city_kk,
+                zhkh_city(t.id, 'ru') as city_ru, zhkh_city(t.id, 'kk') as city_kk, case when t.level > 3 then t.name_ru end as district_ru, case when t.level > 3 then t.name_kk end as district_kk,
                 cx.name as complex_name, cx.slug as complex_slug
          from house_managements m
          join house_managements_company_lnk cl on cl.house_management_id = m.id
@@ -141,7 +141,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       );
       const items = await rows(
         `select h.address_id, h.address, h.apartments,
-                t.name_ru as city_ru, t.name_kk as city_kk,
+                zhkh_city(t.id, 'ru') as city_ru, zhkh_city(t.id, 'kk') as city_kk, case when t.level > 3 then t.name_ru end as district_ru, case when t.level > 3 then t.name_kk end as district_kk,
                 cx.name as complex_name, cx.slug as complex_slug,
                 ${CURRENT_MANAGER}
          from houses h
@@ -163,7 +163,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       const [house] = await rows(
         `select h.id, h.address_id, h.address, h.apartments, h.floors, h.year_built,
                 h.latitude, h.longitude,
-                t.name_ru as city_ru, t.name_kk as city_kk, t.path_ru, t.path_kk,
+                zhkh_city(t.id, 'ru') as city_ru, zhkh_city(t.id, 'kk') as city_kk, case when t.level > 3 then t.name_ru end as district_ru, case when t.level > 3 then t.name_kk end as district_kk, t.path_ru, t.path_kk,
                 cx.name as complex_name, cx.slug as complex_slug,
                 (select count(*)::int from units u where u.address_id = h.address_id) as units
          from houses h
@@ -221,7 +221,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
 
       const houses = await rows(
         `select h.address_id, h.address, h.apartments, h.latitude, h.longitude,
-                t.name_ru as city_ru, t.name_kk as city_kk,
+                zhkh_city(t.id, 'ru') as city_ru, zhkh_city(t.id, 'kk') as city_kk, case when t.level > 3 then t.name_ru end as district_ru, case when t.level > 3 then t.name_kk end as district_kk,
                 ${CURRENT_MANAGER}
          from houses_complex_lnk xl
          join houses h on h.id = xl.house_id
