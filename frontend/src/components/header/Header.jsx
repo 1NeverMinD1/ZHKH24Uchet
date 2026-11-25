@@ -151,22 +151,13 @@ export default function Header() {
                 )}
               </div>
             ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="header__btn header__btn--outline"
-                  onClick={closeAll}
-                >
-                  <StableLabel k="header.login" />
-                </Link>
-                <Link
-                  to="/register"
-                  className="header__btn header__btn--filled"
-                  onClick={closeAll}
-                >
-                  <StableLabel k="header.register" />
-                </Link>
-              </>
+              <Link
+                to="/login"
+                className="header__btn header__btn--filled"
+                onClick={closeAll}
+              >
+                <StableLabel k="header.login" />
+              </Link>
             )}
           </div>
         </div>

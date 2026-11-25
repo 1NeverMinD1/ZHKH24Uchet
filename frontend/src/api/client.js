@@ -4,12 +4,7 @@ const client = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:1337/api",
 });
 
-const AUTH_PREFIXES = [
-  "/user",
-  "/company-card",
-  "/history",
-  "/auth/change-password",
-];
+const AUTH_PREFIXES = ["/user", "/company-card", "/history", "/account/me"];
 const RETRY_PREFIXES = ["/company-card", "/history"];
 
 const startsWithAny = (url, prefixes) =>

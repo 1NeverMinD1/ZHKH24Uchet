@@ -1,44 +1,42 @@
 import { useState } from "react";
-import client from "../../api/client";
 import SEO from "../../components/seo/SEO";
-import { Link } from "../../i18n/router";
 import { useNavigate } from "../../i18n/useNavigate";
 import { useLocale } from "../../i18n/context";
-import { errorKey } from "../../utils/authErrors";
+import { loginWithEds, errorCode } from "../../api/account";
 import "../auth/_Auth.scss";
 
-const normalizeIdentifier = (value) => {
-  const trimmed = value.trim();
-  if (/\p{L}/u.test(trimmed)) return trimmed;
-  return trimmed.replace(/[^\d+]/g, "");
-};
+const KNOWN_ERRORS = [
+  "NCALAYER_NOT_RUNNING",
+  "NCALAYER_CLOSED",
+  "NCALAYER_ERROR",
+  "CHALLENGE_EXPIRED",
+  "SIGNATURE_INVALID",
+  "CERT_NOT_FOUND",
+  "CERT_INVALID",
+  "NOT_AUTH_KEY",
+  "CERT_REVOKED",
+  "IIN_NOT_FOUND",
+  "USER_BLOCKED",
+  "NCANODE_UNAVAILABLE",
+];
 
 export default function Login() {
   const navigate = useNavigate();
-  const { t } = useLocale();
-  const [form, setForm] = useState({ identifier: "", password: "" });
+  const { locale, t } = useLocale();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleLogin = async () => {
     setError("");
     setLoading(true);
-
     try {
-      const { data } = await client.post("/auth/local", {
-        identifier: normalizeIdentifier(form.identifier),
-        password: form.password,
-      });
-      localStorage.setItem("token", data.jwt);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      navigate("/");
+      const { user } = await loginWithEds(locale);
+      navigate(user && user.phone ? "/" : "/profile");
     } catch (err) {
-      setError(t(errorKey(err.response?.data?.error?.message, "login.error")));
+      const code = errorCode(err);
+      if (code !== "CANCELED") {
+        setError(KNOWN_ERRORS.includes(code) ? code : "DEFAULT");
+      }
     } finally {
       setLoading(false);
     }
@@ -47,47 +45,32 @@ export default function Login() {
   return (
     <section className="auth">
       <SEO title={t("login.seoTitle")} noindex />
-      <form className="auth__form" onSubmit={handleSubmit}>
+      <div className="auth__form">
         <h1 className="auth__title">{t("login.title")}</h1>
+        <p className="auth__footer">{t("login.edsText")}</p>
 
-        <label className="auth__label">
-          {t("login.identifier")}
-          <input
-            className="auth__input"
-            type="text"
-            name="identifier"
-            placeholder={t("login.identifierPlaceholder")}
-            value={form.identifier}
-            onChange={handleChange}
-            autoComplete="username"
-            required
-          />
-        </label>
+        {error && <p className="auth__error">{t(`login.errors.${error}`)}</p>}
+        {error === "NCALAYER_NOT_RUNNING" && (
+          <p className="auth__footer">
+            <a
+              href="https://pki.gov.kz/ncalayer/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t("login.ncalayerDownload")}
+            </a>
+          </p>
+        )}
 
-        <label className="auth__label">
-          {t("login.password")}
-          <input
-            className="auth__input"
-            type="password"
-            name="password"
-            value={form.password}
-            onChange={handleChange}
-            autoComplete="current-password"
-            required
-          />
-        </label>
-
-        {error && <p className="auth__error">{error}</p>}
-
-        <button className="auth__button" type="submit" disabled={loading}>
-          {loading ? t("login.wait") : t("login.submit")}
+        <button
+          className="auth__button"
+          type="button"
+          onClick={handleLogin}
+          disabled={loading}
+        >
+          {loading ? t("login.wait") : t("login.edsSubmit")}
         </button>
-
-        <p className="auth__footer">
-          {t("login.noAccount")}{" "}
-          <Link to="/register">{t("login.toRegister")}</Link>
-        </p>
-      </form>
+      </div>
     </section>
   );
 }

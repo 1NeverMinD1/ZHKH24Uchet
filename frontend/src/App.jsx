@@ -8,7 +8,6 @@ import Home from "./pages/home/Home";
 import ScrollToTop from "./components/scroll/ScrollToTop";
 
 const Login = lazy(() => import("./pages/login/Login"));
-const Register = lazy(() => import("./pages/register/Register"));
 const Profile = lazy(() => import("./pages/profile/Profile"));
 const Company = lazy(() => import("./pages/company/Company"));
 const Address = lazy(() => import("./pages/address/Address"));
@@ -25,7 +24,7 @@ const pages = (
   <>
     <Route index element={<Home />} />
     <Route path="login" element={<Login />} />
-    <Route path="register" element={<Register />} />
+    <Route path="register" element={<Login />} />
     <Route path="profile" element={<Profile />} />
     <Route path="company/:slug" element={<Company />} />
     <Route path="address/:id" element={<Address />} />
