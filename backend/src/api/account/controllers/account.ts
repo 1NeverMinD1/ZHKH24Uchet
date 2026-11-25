@@ -41,7 +41,29 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
     }
 
     const info = service.extractCertificate(result);
-    if (info.error) return fail(ctx, 401, info.error);
+    if (info.error) {
+      strapi.log.warn(
+        `EDS login failed: ${info.error} ${JSON.stringify({
+          status: result?.status,
+          message: result?.message,
+          valid: result?.valid,
+          signers: (result?.signers || []).map((s: any) => ({
+            status: s?.status,
+            subIndication: s?.subIndication,
+            message: s?.message,
+            certificates: (s?.certificates || []).map((c: any) => ({
+              valid: c?.valid,
+              keyUsage: c?.keyUsage,
+              notBefore: c?.notBefore,
+              notAfter: c?.notAfter,
+              revocations: c?.revocations,
+              issuer: c?.issuer?.commonName,
+            })),
+          })),
+        })}`,
+      );
+      return fail(ctx, 401, info.error);
+    }
 
     const user = await service.upsertUser(info);
     if (user.blocked) return fail(ctx, 403, "USER_BLOCKED");
