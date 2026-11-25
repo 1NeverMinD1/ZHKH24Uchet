@@ -562,14 +562,14 @@ export interface ApiComplexComplex extends Struct.CollectionTypeSchema {
     description: Schema.Attribute.Text;
     houses: Schema.Attribute.Relation<'oneToMany', 'api::house.house'>;
     kato: Schema.Attribute.String;
-    latitude: Schema.Attribute.Decimal;
+    latitude: Schema.Attribute.Float;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::complex.complex'
     > &
       Schema.Attribute.Private;
-    longitude: Schema.Attribute.Decimal;
+    longitude: Schema.Attribute.Float;
     name: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
     slug: Schema.Attribute.UID<'name'>;

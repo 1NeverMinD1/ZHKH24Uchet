@@ -19,8 +19,8 @@
     "apartments": { "type": "integer" },
     "floors": { "type": "integer" },
     "year_built": { "type": "integer" },
-    "latitude": { "type": "decimal" },
-    "longitude": { "type": "decimal" },
+    "latitude": { "type": "float" },
+    "longitude": { "type": "float" },
     "complex": {
       "type": "relation",
       "relation": "manyToOne",

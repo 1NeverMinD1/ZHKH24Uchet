@@ -17,8 +17,8 @@
     "kato": { "type": "string" },
     "description": { "type": "text" },
     "apartments": { "type": "integer" },
-    "latitude": { "type": "decimal" },
-    "longitude": { "type": "decimal" },
+    "latitude": { "type": "float" },
+    "longitude": { "type": "float" },
     "houses": {
       "type": "relation",
       "relation": "oneToMany",
