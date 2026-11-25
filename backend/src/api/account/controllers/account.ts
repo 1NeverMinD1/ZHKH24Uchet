@@ -20,7 +20,12 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
     const service: any = strapi.service("api::account.account");
     const body = ctx.request.body || {};
     const nonce = body.nonce;
-    const cms = body.cms;
+    const cms =
+      typeof body.cms === "string"
+        ? body.cms
+            .replace(/-----(BEGIN|END)[^-]*-----/g, "")
+            .replace(/\s+/g, "")
+        : body.cms;
     if (
       typeof nonce !== "string" ||
       typeof cms !== "string" ||
