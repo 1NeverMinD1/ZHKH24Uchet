@@ -23,8 +23,7 @@
     "email": {
       "type": "email",
       "minLength": 6,
-      "configurable": false,
-      "required": true
+      "configurable": false
     },
     "provider": {
       "type": "string",
@@ -76,6 +75,23 @@
       "type": "string",
       "required": false,
       "unique": true
+    },
+    "iin": {
+      "type": "string",
+      "unique": true,
+      "maxLength": 12
+    },
+    "fullName": {
+      "type": "string"
+    },
+    "middleName": {
+      "type": "string"
+    },
+    "bins": {
+      "type": "json"
+    },
+    "lastLoginAt": {
+      "type": "datetime"
     }
   }
 }
