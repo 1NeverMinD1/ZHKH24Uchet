@@ -215,4 +215,28 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
       createdAt: user.createdAt,
     };
   },
+
+  async buildProfile(user: any) {
+    const profile = this.toProfile(user);
+    const list = profile.bins.map((b: any) => b.bin).filter(Boolean);
+    if (list.length === 0) return profile;
+    const rows: any[] = await strapi.db.query("api::company.company").findMany({
+      where: { bin: { $in: list } },
+      select: ["bin", "slug", "name_ru", "name_kk"],
+    });
+    const byBin = new Map(rows.map((r: any) => [r.bin, r]));
+    return {
+      ...profile,
+      bins: profile.bins.map((b: any) => {
+        const row: any = byBin.get(b.bin);
+        if (!row) return { ...b, slug: null };
+        return {
+          ...b,
+          slug: row.slug || null,
+          nameRu: row.name_ru || null,
+          nameKk: row.name_kk || null,
+        };
+      }),
+    };
+  },
 });

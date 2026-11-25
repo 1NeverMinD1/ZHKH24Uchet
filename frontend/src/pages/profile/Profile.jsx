@@ -290,12 +290,23 @@ export default function Profile() {
                   {t("profile.companiesTitle")}
                 </h2>
                 <ul className="profile__links">
-                  {bins.map((item) => (
-                    <li key={item.bin}>
-                      {item.organization ? `${item.organization} · ` : ""}
-                      {t("profile.bin")} {item.bin}
-                    </li>
-                  ))}
+                  {bins.map((item) => {
+                    const name =
+                      (locale === "kk" && item.nameKk) ||
+                      item.nameRu ||
+                      item.organization ||
+                      "";
+                    const label = `${name ? `${name} · ` : ""}${t("profile.bin")} ${item.bin}`;
+                    return (
+                      <li key={item.bin}>
+                        {item.slug ? (
+                          <Link to={`/company/${item.slug}`}>{label}</Link>
+                        ) : (
+                          label
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}

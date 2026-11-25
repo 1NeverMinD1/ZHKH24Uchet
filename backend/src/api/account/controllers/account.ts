@@ -76,7 +76,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
     ctx.set("Cache-Control", "no-store");
     ctx.body = {
       jwt: await service.issueJwt(user),
-      user: service.toProfile(user),
+      user: await service.buildProfile(user),
       bin: info.bin,
     };
   },
@@ -86,7 +86,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
     const user = await service.getAuthUser(ctx);
     if (!user) return fail(ctx, 401, "UNAUTHORIZED");
     ctx.set("Cache-Control", "no-store");
-    ctx.body = { user: service.toProfile(user) };
+    ctx.body = { user: await service.buildProfile(user) };
   },
 
   async updateMe(ctx: any) {
@@ -108,6 +108,6 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
     const updated = await strapi.db
       .query("plugin::users-permissions.user")
       .update({ where: { id: user.id }, data: { phone } });
-    ctx.body = { user: service.toProfile(updated) };
+    ctx.body = { user: await service.buildProfile(updated) };
   },
 });
