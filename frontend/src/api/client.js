@@ -1,7 +1,11 @@
 import axios from "axios";
 
 const client = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:1337/api",
+  baseURL:
+    import.meta.env.VITE_API_URL ||
+    (import.meta.env.MODE === "registry"
+      ? "/api"
+      : "http://localhost:1337/api"),
 });
 
 const AUTH_PREFIXES = ["/user", "/company-card", "/history", "/account/me"];

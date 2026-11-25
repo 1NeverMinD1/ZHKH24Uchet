@@ -1,0 +1,287 @@
+.header__brand {
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #2b4c7e;
+  background: #eaf1f8;
+  border-radius: 4px;
+}
+
+.rg {
+  min-height: 60vh;
+  padding: 40px 20px 64px;
+  background: #f4f7fa;
+
+  &__inner {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    max-width: 1120px;
+    margin: 0 auto;
+  }
+
+  &__hero {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 32px;
+    background: #ffffff;
+    border: 1px solid #dce3ea;
+    border-radius: 8px;
+  }
+
+  &__title {
+    font-size: 28px;
+    color: #2b4c7e;
+  }
+
+  &__subtitle {
+    font-size: 18px;
+    color: #2b4c7e;
+  }
+
+  &__lead {
+    max-width: 720px;
+    font-size: 15px;
+    line-height: 1.5;
+    color: #5b6472;
+  }
+
+  &__search {
+    display: flex;
+    gap: 10px;
+  }
+
+  &__input {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 14px;
+    font-family: inherit;
+    font-size: 15px;
+    color: #1c1c1c;
+    background: #ffffff;
+    border: 1px solid #dce3ea;
+    border-radius: 4px;
+    outline: none;
+
+    &:focus {
+      border-color: #3a6ea5;
+    }
+  }
+
+  &__button {
+    padding: 12px 20px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    color: #ffffff;
+    white-space: nowrap;
+    background: #3a6ea5;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+
+    &:hover {
+      background: #2b4c7e;
+    }
+
+    &--ghost {
+      color: #3a6ea5;
+      background: #ffffff;
+      border: 1px solid #3a6ea5;
+
+      &:hover {
+        color: #ffffff;
+      }
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
+
+  &__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  &__tab {
+    padding: 8px 14px;
+    font-family: inherit;
+    font-size: 14px;
+    color: #2b4c7e;
+    background: #ffffff;
+    border: 1px solid #dce3ea;
+    border-radius: 20px;
+    cursor: pointer;
+
+    &--active {
+      color: #ffffff;
+      background: #3a6ea5;
+      border-color: #3a6ea5;
+    }
+  }
+
+  &__tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+
+  &__tile {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 20px;
+    color: inherit;
+    text-decoration: none;
+    background: #ffffff;
+    border: 1px solid #dce3ea;
+    border-radius: 8px;
+
+    &:hover {
+      border-color: #3a6ea5;
+    }
+  }
+
+  &__tile-value {
+    font-size: 26px;
+    font-weight: 700;
+    color: #2b4c7e;
+  }
+
+  &__tile-label {
+    font-size: 14px;
+    color: #5b6472;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__card {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 20px;
+    color: inherit;
+    text-decoration: none;
+    background: #ffffff;
+    border: 1px solid #dce3ea;
+    border-radius: 8px;
+
+    &:hover {
+      border-color: #3a6ea5;
+    }
+  }
+
+  &__card-main {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  &__card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1c1c1c;
+  }
+
+  &__card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    font-size: 13px;
+    color: #5b6472;
+  }
+
+  &__card-side {
+    flex-shrink: 0;
+    text-align: right;
+  }
+
+  &__num {
+    font-size: 20px;
+    font-weight: 700;
+    color: #2b4c7e;
+  }
+
+  &__num-label {
+    font-size: 12px;
+    color: #5b6472;
+  }
+
+  &__badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #2b4c7e;
+    background: #eaf1f8;
+    border-radius: 4px;
+
+    &--ksk {
+      color: #6b5420;
+      background: #f3eee2;
+    }
+
+    &--uk {
+      color: #2f5d50;
+      background: #e6f0ed;
+    }
+
+    &--service {
+      color: #4f3d78;
+      background: #efebf6;
+    }
+
+    &--gone {
+      color: #5b6472;
+      background: #eceff2;
+    }
+  }
+
+  &__pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    font-size: 14px;
+    color: #5b6472;
+  }
+
+  &__status {
+    font-size: 15px;
+    color: #5b6472;
+  }
+
+  @media (max-width: 640px) {
+    padding: 24px 16px 48px;
+
+    &__hero {
+      padding: 20px;
+    }
+
+    &__title {
+      font-size: 22px;
+    }
+
+    &__search {
+      flex-direction: column;
+    }
+
+    &__card {
+      flex-direction: column;
+    }
+
+    &__card-side {
+      text-align: left;
+    }
+  }
+}

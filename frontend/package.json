@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "dev:registry": "vite --mode registry",
+    "build:registry": "vite build --mode registry --outDir dist-registry",
     "lint": "eslint .",
     "preview": "vite preview"
   },

@@ -15,7 +15,14 @@ const getInitials = (user) => {
 
 import Logo from "../logo/Logo";
 
-export default function Header() {
+const DEFAULT_LINKS = [
+  { to: "/companies", k: "header.companies" },
+  { to: "/stats", k: "header.stats" },
+  { k: "header.registries", soon: true },
+  { k: "header.about", soon: true },
+];
+
+export default function Header({ links = DEFAULT_LINKS, brand = "" }) {
   useLocation();
   const navigate = useNavigate();
   const { t } = useLocale();
@@ -68,6 +75,7 @@ export default function Header() {
       <div className="header__inner">
         <Link to="/" className="header__logo" onClick={closeAll}>
           <Logo className="header__logo-img" />
+          {brand && <span className="header__brand">{brand}</span>}
         </Link>
 
         <button
@@ -86,24 +94,26 @@ export default function Header() {
           className={`header__panel${menuOpen ? " header__panel--open" : ""}`}
         >
           <nav className="header__nav">
-            <NavLink to="/companies" className={linkClass} onClick={closeAll}>
-              <StableLabel k="header.companies" />
-            </NavLink>
-            <NavLink to="/stats" className={linkClass} onClick={closeAll}>
-              <StableLabel k="header.stats" />
-            </NavLink>
-            <span
-              className="header__link header__link--soon"
-              title={t("header.soon")}
-            >
-              <StableLabel k="header.registries" />
-            </span>
-            <span
-              className="header__link header__link--soon"
-              title={t("header.soon")}
-            >
-              <StableLabel k="header.about" />
-            </span>
+            {links.map((link) =>
+              link.soon ? (
+                <span
+                  key={link.k}
+                  className="header__link header__link--soon"
+                  title={t("header.soon")}
+                >
+                  <StableLabel k={link.k} />
+                </span>
+              ) : (
+                <NavLink
+                  key={link.k}
+                  to={link.to}
+                  className={linkClass}
+                  onClick={closeAll}
+                >
+                  <StableLabel k={link.k} />
+                </NavLink>
+              ),
+            )}
           </nav>
 
           <div className="header__actions">

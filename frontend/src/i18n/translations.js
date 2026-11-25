@@ -2,6 +2,7 @@ import { dataMessages } from "./messagesData";
 import { authMessages } from "./messagesAuth";
 import { directorMessages } from "./messagesDirector";
 import { historyMessages } from "./messagesHistory";
+import { registryMessages } from "./messagesRegistry";
 
 export const translations = {
   ru: {
@@ -230,6 +231,7 @@ Object.assign(
   authMessages.ru,
   historyMessages.ru,
   directorMessages.ru,
+  registryMessages.ru,
 );
 Object.assign(
   translations.kk,
@@ -237,4 +239,5 @@ Object.assign(
   authMessages.kk,
   historyMessages.kk,
   directorMessages.kk,
+  registryMessages.kk,
 );
