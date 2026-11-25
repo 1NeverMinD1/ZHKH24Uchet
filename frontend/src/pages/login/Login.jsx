@@ -20,6 +20,27 @@ const KNOWN_ERRORS = [
   "NCANODE_UNAVAILABLE",
 ];
 
+function KeyIcon({ size }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="7.5" cy="15.5" r="4.5" />
+      <path d="M10.7 12.3 20 3" />
+      <path d="M16 7l3 3" />
+      <path d="M18 5l2 2" />
+    </svg>
+  );
+}
+
 export default function Login() {
   const navigate = useNavigate();
   const { locale, t } = useLocale();
@@ -45,32 +66,40 @@ export default function Login() {
   return (
     <section className="auth">
       <SEO title={t("login.seoTitle")} noindex />
-      <div className="auth__form">
-        <h1 className="auth__title">{t("login.title")}</h1>
-        <p className="auth__footer">{t("login.edsText")}</p>
-
-        {error && <p className="auth__error">{t(`login.errors.${error}`)}</p>}
-        {error === "NCALAYER_NOT_RUNNING" && (
-          <p className="auth__footer">
-            <a
-              href="https://pki.gov.kz/ncalayer/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {t("login.ncalayerDownload")}
-            </a>
-          </p>
-        )}
+      <div className="auth__form auth__form--eds">
+        <div className="auth__head">
+          <span className="auth__icon">
+            <KeyIcon size={30} />
+          </span>
+          <h1 className="auth__title">{t("login.title")}</h1>
+          <p className="auth__text">{t("login.edsText")}</p>
+        </div>
 
         <button
-          className="auth__button"
+          className="auth__button auth__button--eds"
           type="button"
           onClick={handleLogin}
           disabled={loading}
         >
-          {loading ? t("login.wait") : t("login.edsSubmit")}
+          <KeyIcon size={18} />
+          <span>{loading ? t("login.wait") : t("login.edsSubmit")}</span>
         </button>
-      </div>
+
+        {error && (
+          <div className="auth__error">
+            <span>{t(`login.errors.${error}`)}</span>
+            {error === "NCALAYER_NOT_RUNNING" && (
+              <a
+                href="https://pki.gov.kz/ncalayer/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t("login.ncalayerDownload")}
+              </a>
+            )}
+          </div>
+        )}
+      </div>{" "}
     </section>
   );
 }
