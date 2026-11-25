@@ -261,8 +261,141 @@
     color: #5b6472;
   }
 
+  &__head {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 28px 32px;
+    background: #ffffff;
+    border: 1px solid #dce3ea;
+    border-radius: 8px;
+  }
+
+  &__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  &__name {
+    font-size: 24px;
+    line-height: 1.3;
+    color: #1c1c1c;
+  }
+
+  &__facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px 24px;
+  }
+
+  &__fact {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__fact-label {
+    font-size: 12px;
+    color: #5b6472;
+  }
+
+  &__fact-value {
+    font-size: 15px;
+    color: #1c1c1c;
+  }
+
+  &__ext {
+    align-self: flex-start;
+    font-size: 14px;
+    font-weight: 600;
+    color: #3a6ea5;
+  }
+
+  &__stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+  }
+
+  &__stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 16px 20px;
+    background: #ffffff;
+    border: 1px solid #dce3ea;
+    border-radius: 8px;
+  }
+
+  &__section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__rows {
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 1px solid #dce3ea;
+    border-radius: 8px;
+  }
+
+  &__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 20px;
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid #edf1f5;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background: #f8fafc;
+    }
+  }
+
+  &__row-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  &__row-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1c1c1c;
+  }
+
+  &__row-side {
+    flex-shrink: 0;
+    font-size: 13px;
+    color: #5b6472;
+    white-space: nowrap;
+  }
+
   @media (max-width: 640px) {
     padding: 24px 16px 48px;
+
+    &__head {
+      padding: 20px;
+    }
+
+    &__name {
+      font-size: 20px;
+    }
+
+    &__row {
+      flex-direction: column;
+      align-items: flex-start;
+    }
 
     &__hero {
       padding: 20px;
