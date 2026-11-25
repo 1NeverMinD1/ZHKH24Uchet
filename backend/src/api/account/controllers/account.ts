@@ -75,7 +75,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
 
     ctx.set("Cache-Control", "no-store");
     ctx.body = {
-      jwt: service.issueJwt(user),
+      jwt: await service.issueJwt(user),
       user: service.toProfile(user),
       bin: info.bin,
     };

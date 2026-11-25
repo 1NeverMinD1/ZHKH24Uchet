@@ -157,24 +157,34 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
     });
   },
 
-  issueJwt(user: any) {
-    return strapi
+  async issueJwt(user: any) {
+    return await strapi
       .plugin("users-permissions")
       .service("jwt")
       .issue({ id: user.id });
   },
 
   async getAuthUser(ctx: any) {
+    const header = String(ctx.request?.header?.authorization || "");
+    const match = header.match(/^Bearer\s+(\S+)$/i);
+    if (!match) {
+      strapi.log.warn("EDS me: no bearer token");
+      return null;
+    }
     let payload: any = null;
     try {
       payload = await strapi
         .plugin("users-permissions")
         .service("jwt")
-        .getToken(ctx);
-    } catch {
+        .verify(match[1]);
+    } catch (e) {
+      strapi.log.warn(`EDS me: token rejected ${(e as Error).message}`);
       return null;
     }
-    if (!payload || !payload.id) return null;
+    if (!payload || !payload.id) {
+      strapi.log.warn("EDS me: token without id");
+      return null;
+    }
     const user = await strapi.db
       .query(USER_UID)
       .findOne({ where: { id: payload.id } });
