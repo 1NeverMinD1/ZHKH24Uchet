@@ -457,8 +457,8 @@ export default {
 
     const list = parent
       ? await rows(
-          "SELECT kato, name_ru, name_kk FROM territories WHERE level = 2 AND kato LIKE ? ORDER BY name_ru",
-          [`${parent.slice(0, 2)}%`],
+          `SELECT kato, name_ru, name_kk FROM territories WHERE level = ${parent.length >= 4 ? 3 : 2} AND kato LIKE ? ORDER BY name_ru`,
+          [`${parent.length >= 4 ? parent.slice(0, 4) : parent.slice(0, 2)}%`],
         )
       : await rows(
           "SELECT kato, name_ru, name_kk FROM territories WHERE level = 1 ORDER BY name_ru",

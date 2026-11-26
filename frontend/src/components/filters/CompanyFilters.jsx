@@ -25,6 +25,7 @@ export default function CompanyFilters({ filters, update, onReset }) {
   const [snapshots, setSnapshots] = useState([]);
   const [regions, setRegions] = useState([]);
   const [districts, setDistricts] = useState({ region: "", list: [] });
+  const [settlements, setSettlements] = useState({ district: "", list: [] });
   const options = useFilterOptions();
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -33,6 +34,7 @@ export default function CompanyFilters({ filters, update, onReset }) {
   const historyMode = changedKey !== "";
   const period = filters.mode === "period";
   const region = filters.region || "";
+  const district = filters.district || "";
 
   useEffect(() => {
     let cancelled = false;
@@ -72,6 +74,22 @@ export default function CompanyFilters({ filters, update, onReset }) {
     };
   }, [region]);
 
+  useEffect(() => {
+    if (!district) return;
+    let cancelled = false;
+
+    client
+      .get("/history/territories", { params: { parent: district } })
+      .then(({ data }) => {
+        if (!cancelled) setSettlements({ district, list: data.data });
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [district]);
+
   const toggleKind = (kind) => {
     const selected = new Set(changedKey ? changedKey.split(",") : []);
     if (selected.has(kind)) {
@@ -96,6 +114,8 @@ export default function CompanyFilters({ filters, update, onReset }) {
     }`;
 
   const districtList = districts.region === region ? districts.list : [];
+  const settlementList =
+    settlements.district === district ? settlements.list : [];
   const lastSnapshot = snapshots[snapshots.length - 1];
   const defaultTo = lastSnapshot ? lastSnapshot.takenOn : "";
   const defaultFrom =
@@ -250,15 +270,22 @@ export default function CompanyFilters({ filters, update, onReset }) {
               </select>
             </label>
 
-            {filters.kato && (
-              <button
-                className="filters__reset"
-                type="button"
-                onClick={() => update({ kato: "" })}
+            <label className="filters__field">
+              {t("filters.settlement")}
+              <select
+                className="filters__select"
+                value={filters.kato || ""}
+                disabled={!district}
+                onChange={(e) => update({ kato: e.target.value })}
               >
-                {t("filters.kato", { code: filters.kato })} ×
-              </button>
-            )}
+                <option value="">{t("filters.settlementAll")}</option>
+                {settlementList.map((item) => (
+                  <option key={item.kato} value={item.kato}>
+                    {pick(item, "name", locale)}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
 
           <div className="filters__row">

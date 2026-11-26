@@ -86,7 +86,8 @@ export const translations = {
     "address.companySearchButton": "Найти",
     "search.formerName": "Ранее: {name}",
     "filters.toggle": "Фильтры",
-    "filters.kato": "Населённый пункт: КАТО {code}",
+    "filters.settlement": "Населённый пункт",
+    "filters.settlementAll": "Все населённые пункты",
     "hero.badgeData": "Открытые данные Бюро национальной статистики",
     "hero.introData":
       "БИН, руководитель, адрес, вид деятельности и история изменений с 2018 года. Данные реестра юридических лиц, обновление каждый месяц.",
@@ -196,7 +197,8 @@ export const translations = {
     "address.companySearchButton": "Іздеу",
     "search.formerName": "Бұрын: {name}",
     "filters.toggle": "Сүзгілер",
-    "filters.kato": "Елді мекен: КАТО {code}",
+    "filters.settlement": "Елді мекен",
+    "filters.settlementAll": "Барлық елді мекендер",
     "hero.badgeData": "Ұлттық статистика бюросының ашық деректері",
     "hero.introData":
       "БСН, басшы, мекенжай, қызмет түрі және 2018 жылдан бергі өзгерістер тарихы. Заңды тұлғалар тізілімінің деректері, ай сайын жаңартылады.",
