@@ -7,19 +7,26 @@ import { fetchRegistryCompanies } from "../../api/registry";
 import { TYPES, nameOf, cityOf, formatNumber } from "../format";
 
 const STATUSES = ["active", "gone", "all"];
+const HOUSES = ["", "yes", "no"];
+const SORTS = ["houses", "name"];
+
+const pick = (value, list, fallback) =>
+  list.includes(value) ? value : fallback;
 
 export default function RegistryCompanies() {
   const { locale, t } = useLocale();
   const [params, setParams] = useSearchParams();
-  const rawType = params.get("type");
-  const type = TYPES.includes(rawType) ? rawType : "";
-  const rawStatus = params.get("status");
-  const status = STATUSES.includes(rawStatus) ? rawStatus : "active";
+  const type = pick(params.get("type"), TYPES, "");
+  const status = pick(params.get("status"), STATUSES, "active");
+  const houses = pick(params.get("houses") || "", HOUSES, "");
+  const sort = pick(params.get("sort"), SORTS, "houses");
+  const city = params.get("city") || "";
   const q = params.get("q") || "";
   const page = Math.max(1, parseInt(params.get("page") || "1", 10) || 1);
-  const key = `${type}|${status}|${q}|${page}`;
+  const key = [type, status, houses, sort, city, q, page].join("|");
 
   const [input, setInput] = useState(q);
+  const [cities, setCities] = useState([]);
   const [result, setResult] = useState({
     key: null,
     data: null,
@@ -28,9 +35,11 @@ export default function RegistryCompanies() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchRegistryCompanies({ type, q, page, status })
+    fetchRegistryCompanies({ type, q, page, status, city, houses, sort })
       .then((data) => {
-        if (!cancelled) setResult({ key, data, failed: false });
+        if (cancelled) return;
+        setResult({ key, data, failed: false });
+        if (Array.isArray(data.cities)) setCities(data.cities);
       })
       .catch(() => {
         if (!cancelled) setResult({ key, data: null, failed: true });
@@ -38,17 +47,20 @@ export default function RegistryCompanies() {
     return () => {
       cancelled = true;
     };
-  }, [key, type, q, page, status]);
+  }, [key, type, q, page, status, city, houses, sort]);
 
   const loading = result.key !== key;
   const data = loading ? null : result.data;
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
   const update = (next) => {
-    const merged = { type, status, q, page: 1, ...next };
+    const merged = { type, status, houses, sort, city, q, page: 1, ...next };
     const out = {};
     if (merged.type) out.type = merged.type;
     if (merged.status && merged.status !== "active") out.status = merged.status;
+    if (merged.houses) out.houses = merged.houses;
+    if (merged.sort && merged.sort !== "houses") out.sort = merged.sort;
+    if (merged.city) out.city = merged.city;
     if (merged.q) out.q = merged.q;
     if (merged.page > 1) out.page = String(merged.page);
     setParams(out);
@@ -102,12 +114,49 @@ export default function RegistryCompanies() {
         <div className="rg__filters">
           <select
             className="rg__select"
+            value={city}
+            onChange={(e) => update({ city: e.target.value })}
+          >
+            <option value="">{t("registry.companies.allCities")}</option>
+            {cities.map((item) => (
+              <option key={item.city} value={item.city}>
+                {item.city} ({formatNumber(item.count)})
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="rg__select"
             value={status}
             onChange={(e) => update({ status: e.target.value })}
           >
             {STATUSES.map((item) => (
               <option key={item} value={item}>
                 {t(`registry.statusFilter.${item}`)}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="rg__select"
+            value={houses}
+            onChange={(e) => update({ houses: e.target.value })}
+          >
+            {HOUSES.map((item) => (
+              <option key={item || "all"} value={item}>
+                {t(`registry.companies.houses.${item || "all"}`)}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="rg__select"
+            value={sort}
+            onChange={(e) => update({ sort: e.target.value })}
+          >
+            {SORTS.map((item) => (
+              <option key={item} value={item}>
+                {t(`registry.companies.sort.${item}`)}
               </option>
             ))}
           </select>

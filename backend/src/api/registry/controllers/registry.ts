@@ -44,11 +44,16 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
   return {
     async companies(ctx: any) {
       const type = TYPES.includes(ctx.query.type) ? ctx.query.type : null;
-      const q = String(ctx.query.q || "").trim();
-      const page = pageOf(ctx.query.page);
       const status = ["active", "gone", "all"].includes(ctx.query.status)
         ? ctx.query.status
         : "active";
+      const housesFilter = ["yes", "no"].includes(ctx.query.houses)
+        ? ctx.query.houses
+        : "";
+      const city = String(ctx.query.city || "").trim();
+      const sort = ctx.query.sort === "name" ? "name" : "houses";
+      const q = String(ctx.query.q || "").trim();
+      const page = pageOf(ctx.query.page);
       const where = ["c.zhkh_registry = true"];
       const params: any[] = [];
       if (status === "active") where.push("c.status = 'active'");
@@ -66,9 +71,26 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
           params.push(`%${q}%`, `%${q}%`);
         }
       }
+      if (housesFilter === "yes") where.push("coalesce(n.current, 0) > 0");
+      if (housesFilter === "no") where.push("coalesce(n.current, 0) = 0");
+      if (city) {
+        where.push(`exists (
+          select 1
+          from house_managements_company_lnk cc
+          join house_managements mc on mc.id = cc.house_management_id and mc.ended_at is null
+          join house_managements_house_lnk hc on hc.house_management_id = mc.id
+          join houses hh on hh.id = hc.house_id
+          where cc.company_id = c.id and hh.city = ?)`);
+        params.push(city);
+      }
       const whereSql = where.join(" and ");
+      const fromSql = `from companies c left join (${CURRENT_COUNTS}) n on n.company_id = c.id`;
+      const orderSql =
+        sort === "name"
+          ? "coalesce(c.sort_name, c.name_ru)"
+          : "coalesce(n.current, 0) desc, coalesce(c.sort_name, c.name_ru)";
       const [{ total }] = await rows(
-        `select count(*)::int as total from companies c where ${whereSql}`,
+        `select count(*)::int as total ${fromSql} where ${whereSql}`,
         params,
       );
       const items = await rows(
@@ -76,14 +98,24 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
                 ${CITY_BY_KATO},
                 coalesce(n.current, 0) as houses_current,
                 coalesce(n.past, 0) as houses_past
-         from companies c
-         left join (${CURRENT_COUNTS}) n on n.company_id = c.id
+         ${fromSql}
          where ${whereSql}
-         order by coalesce(n.current, 0) desc, c.name_ru
+         order by ${orderSql}
          limit ? offset ?`,
         [...params, PAGE_SIZE, (page - 1) * PAGE_SIZE],
       );
-      ctx.body = { items, total, page, pageSize: PAGE_SIZE };
+      const cities = await rows(
+        `select hh.city, count(distinct cc.company_id)::int as count
+         from house_managements_company_lnk cc
+         join house_managements mc on mc.id = cc.house_management_id and mc.ended_at is null
+         join house_managements_house_lnk hc on hc.house_management_id = mc.id
+         join houses hh on hh.id = hc.house_id
+         join companies c2 on c2.id = cc.company_id and c2.zhkh_registry = true
+         where coalesce(hh.city, '') <> ''
+         group by hh.city
+         order by count(distinct cc.company_id) desc, hh.city`,
+      );
+      ctx.body = { items, total, page, pageSize: PAGE_SIZE, cities };
     },
 
     async company(ctx: any) {

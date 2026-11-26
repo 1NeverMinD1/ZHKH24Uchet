@@ -5,14 +5,24 @@ const get = async (path, params) => {
   return data;
 };
 
-export const fetchRegistryCompanies = ({ type, q, page, status } = {}) =>
+export const fetchRegistryCompanies = ({
+  type,
+  q,
+  page,
+  status,
+  city,
+  houses,
+  sort,
+} = {}) =>
   get("/registry/companies", {
     type: type || undefined,
     q: q || undefined,
     status: status || undefined,
+    city: city || undefined,
+    houses: houses || undefined,
+    sort: sort || undefined,
     page: page || 1,
   });
-
 export const fetchRegistryCompany = (slug) =>
   get(`/registry/company/${encodeURIComponent(slug)}`);
 
