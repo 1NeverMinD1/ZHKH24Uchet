@@ -93,7 +93,7 @@ export const registryMessages = {
   kk: {
     "registry.nav.companies": "Компаниялар",
     "registry.nav.houses": "Үйлер",
-    "registry.nav.complexes": "Тұрғын кешендер",
+    "registry.nav.complexes": "ТК",
 
     "registry.type.osi": "МИБ",
     "registry.type.ksk": "ПИК",

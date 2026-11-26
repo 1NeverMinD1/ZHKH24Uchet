@@ -1,4 +1,11 @@
+.header__logo {
+  display: inline-flex;
+  align-items: center;
+}
+
 .header__brand {
+  align-self: center;
+  line-height: 1.4;
   margin-left: 8px;
   padding: 2px 8px;
   font-size: 13px;
