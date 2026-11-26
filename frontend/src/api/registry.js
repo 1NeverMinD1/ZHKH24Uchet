@@ -16,8 +16,14 @@ export const fetchRegistryCompanies = ({ type, q, page, status } = {}) =>
 export const fetchRegistryCompany = (slug) =>
   get(`/registry/company/${encodeURIComponent(slug)}`);
 
-export const fetchRegistryHouses = ({ q, page } = {}) =>
-  get("/registry/houses", { q: q || undefined, page: page || 1 });
+export const fetchRegistryHouses = ({ q, page, city, managed, complex } = {}) =>
+  get("/registry/houses", {
+    q: q || undefined,
+    city: city || undefined,
+    managed: managed || undefined,
+    complex: complex ? "1" : undefined,
+    page: page || 1,
+  });
 
 export const fetchRegistryHouse = (addressId) =>
   get(`/registry/house/${encodeURIComponent(addressId)}`);

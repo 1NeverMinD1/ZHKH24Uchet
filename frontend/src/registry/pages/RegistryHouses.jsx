@@ -6,14 +6,21 @@ import { useLocale } from "../../i18n/context";
 import { fetchRegistryHouses } from "../../api/registry";
 import { nameOf, placeOf, formatNumber } from "../format";
 
+const MANAGED = ["", "yes", "no"];
+
 export default function RegistryHouses() {
   const { locale, t } = useLocale();
   const [params, setParams] = useSearchParams();
   const q = params.get("q") || "";
+  const city = params.get("city") || "";
+  const rawManaged = params.get("managed") || "";
+  const managed = MANAGED.includes(rawManaged) ? rawManaged : "";
+  const complex = params.get("complex") === "1";
   const page = Math.max(1, parseInt(params.get("page") || "1", 10) || 1);
-  const key = `${q}|${page}`;
+  const key = `${q}|${city}|${managed}|${complex}|${page}`;
 
   const [input, setInput] = useState(q);
+  const [cities, setCities] = useState([]);
   const [result, setResult] = useState({
     key: null,
     data: null,
@@ -22,9 +29,11 @@ export default function RegistryHouses() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchRegistryHouses({ q, page })
+    fetchRegistryHouses({ q, city, managed, complex, page })
       .then((data) => {
-        if (!cancelled) setResult({ key, data, failed: false });
+        if (cancelled) return;
+        setResult({ key, data, failed: false });
+        if (Array.isArray(data.cities)) setCities(data.cities);
       })
       .catch(() => {
         if (!cancelled) setResult({ key, data: null, failed: true });
@@ -32,16 +41,19 @@ export default function RegistryHouses() {
     return () => {
       cancelled = true;
     };
-  }, [key, q, page]);
+  }, [key, q, city, managed, complex, page]);
 
   const loading = result.key !== key;
   const data = loading ? null : result.data;
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
   const update = (next) => {
-    const merged = { q, page: 1, ...next };
+    const merged = { q, city, managed, complex, page: 1, ...next };
     const out = {};
     if (merged.q) out.q = merged.q;
+    if (merged.city) out.city = merged.city;
+    if (merged.managed) out.managed = merged.managed;
+    if (merged.complex) out.complex = "1";
     if (merged.page > 1) out.page = String(merged.page);
     setParams(out);
   };
@@ -70,6 +82,42 @@ export default function RegistryHouses() {
             {t("registry.search")}
           </button>
         </form>
+
+        <div className="rg__filters">
+          <select
+            className="rg__select"
+            value={city}
+            onChange={(e) => update({ city: e.target.value })}
+          >
+            <option value="">{t("registry.houses.allCities")}</option>
+            {cities.map((item) => (
+              <option key={item.city} value={item.city}>
+                {item.city} ({formatNumber(item.count)})
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="rg__select"
+            value={managed}
+            onChange={(e) => update({ managed: e.target.value })}
+          >
+            {MANAGED.map((item) => (
+              <option key={item || "all"} value={item}>
+                {t(`registry.houses.managed.${item || "all"}`)}
+              </option>
+            ))}
+          </select>
+
+          <label className="rg__check">
+            <input
+              type="checkbox"
+              checked={complex}
+              onChange={(e) => update({ complex: e.target.checked })}
+            />
+            {t("registry.houses.inComplex")}
+          </label>
+        </div>
 
         {loading && <p className="rg__status">{t("common.loading")}</p>}
         {!loading && result.failed && (

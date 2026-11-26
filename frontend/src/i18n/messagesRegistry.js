@@ -80,6 +80,11 @@ export const registryMessages = {
     "registry.houses.title": "Дома",
     "registry.houses.placeholder": "Улица и номер дома",
     "registry.houses.noManager": "Сейчас никто не обслуживает",
+    "registry.houses.allCities": "Все города",
+    "registry.houses.managed.all": "Все дома",
+    "registry.houses.managed.yes": "Есть обслуживающая компания",
+    "registry.houses.managed.no": "Сейчас никто не обслуживает",
+    "registry.houses.inComplex": "Только дома в ЖК",
 
     "registry.complexes.seoTitle": "Жилые комплексы — реестр ЖКХ",
     "registry.complexes.title": "Жилые комплексы",
@@ -180,6 +185,11 @@ export const registryMessages = {
     "registry.houses.title": "Үйлер",
     "registry.houses.placeholder": "Көше және үй нөмірі",
     "registry.houses.noManager": "Қазір ешкім қызмет көрсетпейді",
+    "registry.houses.allCities": "Барлық қалалар",
+    "registry.houses.managed.all": "Барлық үйлер",
+    "registry.houses.managed.yes": "Қызмет көрсететін компания бар",
+    "registry.houses.managed.no": "Қазір ешкім қызмет көрсетпейді",
+    "registry.houses.inComplex": "Тек тұрғын кешендегі үйлер",
 
     "registry.complexes.seoTitle": "Тұрғын кешендер — ТКШ тізілімі",
     "registry.complexes.title": "Тұрғын кешендер",

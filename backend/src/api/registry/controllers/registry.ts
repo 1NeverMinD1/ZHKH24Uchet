@@ -132,12 +132,33 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
 
     async houses(ctx: any) {
       const q = String(ctx.query.q || "").trim();
+      const city = String(ctx.query.city || "").trim();
+      const managed = ["yes", "no"].includes(ctx.query.managed)
+        ? ctx.query.managed
+        : "";
+      const inComplex = ctx.query.complex === "1";
       const page = pageOf(ctx.query.page);
       const where: string[] = [];
       const params: any[] = [];
+      const hasManager = `exists (
+        select 1
+        from house_managements_house_lnk hm
+        join house_managements mm on mm.id = hm.house_management_id and mm.ended_at is null
+        where hm.house_id = h.id)`;
       if (q) {
         where.push("h.address ilike ?");
         params.push(`%${q}%`);
+      }
+      if (city) {
+        where.push("h.city = ?");
+        params.push(city);
+      }
+      if (managed === "yes") where.push(hasManager);
+      if (managed === "no") where.push(`not ${hasManager}`);
+      if (inComplex) {
+        where.push(
+          "exists (select 1 from houses_complex_lnk xc where xc.house_id = h.id)",
+        );
       }
       const whereSql = where.length ? `where ${where.join(" and ")}` : "";
       const [{ total }] = await rows(
@@ -146,7 +167,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       );
       const items = await rows(
         `select h.address_id, h.address, h.apartments,
-                zhkh_city(t.id, 'ru') as city_ru, zhkh_city(t.id, 'kk') as city_kk, zhkh_place(t.id, 'ru', 'district') as district_ru, zhkh_place(t.id, 'kk', 'district') as district_kk,
+                ${"zhkh_city(t.id, 'ru') as city_ru, zhkh_city(t.id, 'kk') as city_kk, zhkh_place(t.id, 'ru', 'district') as district_ru, zhkh_place(t.id, 'kk', 'district') as district_kk"},
                 cx.name as complex_name, cx.slug as complex_slug,
                 ${CURRENT_MANAGER}
          from houses h
@@ -159,7 +180,14 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
          limit ? offset ?`,
         [...params, PAGE_SIZE, (page - 1) * PAGE_SIZE],
       );
-      ctx.body = { items, total, page, pageSize: PAGE_SIZE };
+      const cities = await rows(
+        `select city, count(*)::int as count
+         from houses
+         where coalesce(city, '') <> ''
+         group by city
+         order by count(*) desc, city`,
+      );
+      ctx.body = { items, total, page, pageSize: PAGE_SIZE, cities };
     },
 
     async house(ctx: any) {
