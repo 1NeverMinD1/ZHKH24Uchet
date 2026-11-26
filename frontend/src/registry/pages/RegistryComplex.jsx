@@ -4,7 +4,7 @@ import SEO from "../../components/seo/SEO";
 import { Link } from "../../i18n/router";
 import { useLocale } from "../../i18n/context";
 import { fetchRegistryComplex } from "../../api/registry";
-import { nameOf, placeOf } from "../format";
+import { TYPES, nameOf, placeOf } from "../format";
 
 function Status({ text }) {
   return (
@@ -44,14 +44,21 @@ export default function RegistryComplex() {
     return <Status text={t("registry.notFound")} />;
 
   const { complex, houses } = result.data;
-  const companies = new Set(
-    houses.filter((h) => h.manager).map((h) => h.manager.bin),
-  );
+  const byRole = {};
+  houses
+    .filter((h) => h.manager)
+    .forEach((h) => {
+      byRole[h.manager.role] = byRole[h.manager.role] || new Set();
+      byRole[h.manager.role].add(h.manager.bin);
+    });
 
   const stats = [
     [t("registry.complex.houses"), houses.length],
     [t("registry.complex.apartments"), complex.apartments],
-    [t("registry.complex.companies"), companies.size],
+    ...TYPES.filter((role) => byRole[role]).map((role) => [
+      t(`registry.typePlural.${role}`),
+      byRole[role].size,
+    ]),
   ].filter(([, value]) => value !== null && value !== undefined);
 
   return (
