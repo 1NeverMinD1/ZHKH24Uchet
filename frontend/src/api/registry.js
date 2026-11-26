@@ -21,7 +21,8 @@ export const fetchRegistryHouses = ({ q, page } = {}) =>
 export const fetchRegistryHouse = (addressId) =>
   get(`/registry/house/${encodeURIComponent(addressId)}`);
 
-export const fetchRegistryComplexes = () => get("/registry/complexes");
+export const fetchRegistryComplexes = ({ q, page } = {}) =>
+  get("/registry/complexes", { q: q || undefined, page: page || 1 });
 
 export const fetchRegistryComplex = (slug) =>
   get(`/registry/complex/${encodeURIComponent(slug)}`);

@@ -23,7 +23,7 @@ export default function RegistryHome() {
         fetchRegistryCompanies({ type }).then((d) => [type, d.total]),
       ),
       fetchRegistryHouses().then((d) => ["houses", d.total]),
-      fetchRegistryComplexes().then((d) => ["complexes", d.items.length]),
+      fetchRegistryComplexes().then((d) => ["complexes", d.total]),
     ])
       .then((pairs) => {
         if (!cancelled) setCounts(Object.fromEntries(pairs));

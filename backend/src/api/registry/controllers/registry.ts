@@ -196,15 +196,31 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
     },
 
     async complexes(ctx: any) {
+      const q = String(ctx.query.q || "").trim();
+      const page = pageOf(ctx.query.page);
+      const where: string[] = [];
+      const params: any[] = [];
+      if (q) {
+        where.push("(cx.name ilike ? or cx.city ilike ?)");
+        params.push(`%${q}%`, `%${q}%`);
+      }
+      const whereSql = where.length ? `where ${where.join(" and ")}` : "";
+      const [{ total }] = await rows(
+        `select count(*)::int as total from complexes cx ${whereSql}`,
+        params,
+      );
       const items = await rows(
         `select cx.name, cx.slug, cx.city, cx.apartments,
                 count(xl.house_id)::int as houses
          from complexes cx
          left join houses_complex_lnk xl on xl.complex_id = cx.id
+         ${whereSql}
          group by cx.id
-         order by cx.name`,
+         order by count(xl.house_id) desc, cx.name
+         limit ? offset ?`,
+        [...params, PAGE_SIZE, (page - 1) * PAGE_SIZE],
       );
-      ctx.body = { items };
+      ctx.body = { items, total, page, pageSize: PAGE_SIZE };
     },
 
     async complex(ctx: any) {
