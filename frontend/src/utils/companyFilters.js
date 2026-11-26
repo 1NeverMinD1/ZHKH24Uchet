@@ -18,6 +18,7 @@ export const FILTER_KEYS = [
   "mode",
   "region",
   "district",
+  "kato",
   "form",
   "oked",
   "krp",

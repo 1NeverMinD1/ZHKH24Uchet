@@ -43,7 +43,15 @@ export type CompanyFilters = {
 
 const STATUSES = ["active", "gone", "all"];
 
+const katoPrefix = (kato: string) => {
+  if (kato.endsWith("0000000")) return kato.slice(0, 2);
+  if (kato.endsWith("00000")) return kato.slice(0, 4);
+  if (kato.endsWith("000")) return kato.slice(0, 6);
+  return kato;
+};
+
 export const parseCompanyFilters = (query: any): CompanyFilters => {
+  const kato = digits(query.kato, 9);
   const district = digits(query.district, 4);
   const region = digits(query.region, 2);
   const form = String(query.form || "");
@@ -53,7 +61,13 @@ export const parseCompanyFilters = (query: any): CompanyFilters => {
 
   return {
     prefix:
-      district.length === 4 ? district : region.length === 2 ? region : "",
+      kato.length === 9
+        ? katoPrefix(kato)
+        : district.length === 4
+          ? district
+          : region.length === 2
+            ? region
+            : "",
     form: LEGAL_FORMS.includes(form) ? form : "",
     oked: digits(query.oked, 5),
     krp: code(query.krp),

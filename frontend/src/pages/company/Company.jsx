@@ -231,6 +231,9 @@ export default function Company() {
   const localityParts = locality ? locality.split(", ") : [];
   const district =
     region && company.kato.slice(2, 4) !== "00" ? company.kato.slice(0, 4) : "";
+  const katoLink = region
+    ? `/companies?region=${region}${district ? `&district=${district}` : ""}&kato=${company.kato}`
+    : "";
 
   const localityValue =
     region && localityParts.length > 0 ? (
@@ -245,7 +248,10 @@ export default function Company() {
           ) : (
             localityParts[1]
           ))}
-        {localityParts.length > 2 && `, ${localityParts.slice(2).join(", ")}`}
+        {localityParts.length > 2 && ", "}
+        {localityParts.length > 2 && (
+          <Link to={katoLink}>{localityParts.slice(2).join(", ")}</Link>
+        )}
       </>
     ) : (
       locality
@@ -436,7 +442,13 @@ export default function Company() {
           />
           <Row
             label={t("company.kato")}
-            value={company.kato}
+            value={
+              katoLink ? (
+                <Link to={katoLink}>{company.kato}</Link>
+              ) : (
+                company.kato
+              )
+            }
             locked={locked}
             lockedText={lockedText}
           />
