@@ -1,6 +1,15 @@
+import { lazy, Suspense } from "react";
 import BindexApp from "./App.jsx";
-import RegistryApp from "./registry/RegistryApp.jsx";
+
+const RegistryApp = lazy(() => import("./registry/RegistryApp.jsx"));
 
 export default function Root() {
-  return import.meta.env.MODE === "registry" ? <RegistryApp /> : <BindexApp />;
+  if (import.meta.env.MODE === "registry") {
+    return (
+      <Suspense fallback={null}>
+        <RegistryApp />
+      </Suspense>
+    );
+  }
+  return <BindexApp />;
 }
