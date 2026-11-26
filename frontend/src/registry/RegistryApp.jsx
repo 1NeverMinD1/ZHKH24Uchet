@@ -10,6 +10,9 @@ import RegistryHome from "./pages/RegistryHome";
 const RegistryCompanies = lazy(() => import("./pages/RegistryCompanies"));
 const RegistryCompany = lazy(() => import("./pages/RegistryCompany"));
 const RegistryHouse = lazy(() => import("./pages/RegistryHouse"));
+const RegistryHouses = lazy(() => import("./pages/RegistryHouses"));
+const RegistryComplexes = lazy(() => import("./pages/RegistryComplexes"));
+const RegistryComplex = lazy(() => import("./pages/RegistryComplex"));
 const Login = lazy(() => import("../pages/login/Login"));
 const Profile = lazy(() => import("../pages/profile/Profile"));
 const NotFound = lazy(() => import("../pages/notfound/NotFound"));
@@ -20,6 +23,9 @@ const pages = (
     <Route path="companies" element={<RegistryCompanies />} />
     <Route path="company/:slug" element={<RegistryCompany />} />
     <Route path="house/:id" element={<RegistryHouse />} />
+    <Route path="houses" element={<RegistryHouses />} />
+    <Route path="complexes" element={<RegistryComplexes />} />
+    <Route path="complex/:slug" element={<RegistryComplex />} />
     <Route path="login" element={<Login />} />
     <Route path="profile" element={<Profile />} />
     <Route path="*" element={<NotFound />} />

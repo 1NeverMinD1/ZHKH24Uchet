@@ -72,6 +72,23 @@ export const registryMessages = {
     "registry.house.nowEmpty":
       "Сейчас дом не обслуживает ни одна компания из реестра",
     "registry.house.history": "Ранее обслуживали",
+
+    "registry.houses.seoTitle": "Дома — реестр ЖКХ",
+    "registry.houses.title": "Дома",
+    "registry.houses.placeholder": "Улица и номер дома",
+    "registry.houses.noManager": "Сейчас никто не обслуживает",
+
+    "registry.complexes.seoTitle": "Жилые комплексы — реестр ЖКХ",
+    "registry.complexes.title": "Жилые комплексы",
+    "registry.complexes.houses": "домов",
+    "registry.complexes.apartments": "квартир: {count}",
+    "registry.complexes.empty": "Жилые комплексы пока не добавлены",
+
+    "registry.complex.seoTitle": "ЖК {name} — реестр ЖКХ",
+    "registry.complex.houses": "Домов",
+    "registry.complex.apartments": "Квартир",
+    "registry.complex.companies": "Обслуживающих компаний",
+    "registry.complex.housesTitle": "Дома в ЖК",
   },
   kk: {
     "registry.nav.companies": "Компаниялар",
@@ -147,5 +164,22 @@ export const registryMessages = {
     "registry.house.nowEmpty":
       "Қазір үйге тізілімдегі бірде-бір компания қызмет көрсетпейді",
     "registry.house.history": "Бұрын қызмет көрсеткендер",
+
+    "registry.houses.seoTitle": "Үйлер — ТКШ тізілімі",
+    "registry.houses.title": "Үйлер",
+    "registry.houses.placeholder": "Көше және үй нөмірі",
+    "registry.houses.noManager": "Қазір ешкім қызмет көрсетпейді",
+
+    "registry.complexes.seoTitle": "Тұрғын кешендер — ТКШ тізілімі",
+    "registry.complexes.title": "Тұрғын кешендер",
+    "registry.complexes.houses": "үй",
+    "registry.complexes.apartments": "пәтер: {count}",
+    "registry.complexes.empty": "Тұрғын кешендер әлі қосылмаған",
+
+    "registry.complex.seoTitle": "{name} ТК — ТКШ тізілімі",
+    "registry.complex.houses": "Үйлер",
+    "registry.complex.apartments": "Пәтерлер",
+    "registry.complex.companies": "Қызмет көрсететін компаниялар",
+    "registry.complex.housesTitle": "Кешендегі үйлер",
   },
 };
