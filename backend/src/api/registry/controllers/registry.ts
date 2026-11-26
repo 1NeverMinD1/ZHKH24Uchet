@@ -46,8 +46,13 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       const type = TYPES.includes(ctx.query.type) ? ctx.query.type : null;
       const q = String(ctx.query.q || "").trim();
       const page = pageOf(ctx.query.page);
+      const status = ["active", "gone", "all"].includes(ctx.query.status)
+        ? ctx.query.status
+        : "active";
       const where = ["c.zhkh_registry = true"];
       const params: any[] = [];
+      if (status === "active") where.push("c.status = 'active'");
+      if (status === "gone") where.push("coalesce(c.status, '') <> 'active'");
       if (type) {
         where.push("c.zhkh_type = ?");
         params.push(type);

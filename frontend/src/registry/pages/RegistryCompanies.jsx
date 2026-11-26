@@ -6,14 +6,18 @@ import { useLocale } from "../../i18n/context";
 import { fetchRegistryCompanies } from "../../api/registry";
 import { TYPES, nameOf, cityOf, formatNumber } from "../format";
 
+const STATUSES = ["active", "gone", "all"];
+
 export default function RegistryCompanies() {
   const { locale, t } = useLocale();
   const [params, setParams] = useSearchParams();
   const rawType = params.get("type");
   const type = TYPES.includes(rawType) ? rawType : "";
+  const rawStatus = params.get("status");
+  const status = STATUSES.includes(rawStatus) ? rawStatus : "active";
   const q = params.get("q") || "";
   const page = Math.max(1, parseInt(params.get("page") || "1", 10) || 1);
-  const key = `${type}|${q}|${page}`;
+  const key = `${type}|${status}|${q}|${page}`;
 
   const [input, setInput] = useState(q);
   const [result, setResult] = useState({
@@ -24,7 +28,7 @@ export default function RegistryCompanies() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchRegistryCompanies({ type, q, page })
+    fetchRegistryCompanies({ type, q, page, status })
       .then((data) => {
         if (!cancelled) setResult({ key, data, failed: false });
       })
@@ -34,16 +38,17 @@ export default function RegistryCompanies() {
     return () => {
       cancelled = true;
     };
-  }, [key, type, q, page]);
+  }, [key, type, q, page, status]);
 
   const loading = result.key !== key;
   const data = loading ? null : result.data;
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
   const update = (next) => {
-    const merged = { type, q, page: 1, ...next };
+    const merged = { type, status, q, page: 1, ...next };
     const out = {};
     if (merged.type) out.type = merged.type;
+    if (merged.status && merged.status !== "active") out.status = merged.status;
     if (merged.q) out.q = merged.q;
     if (merged.page > 1) out.page = String(merged.page);
     setParams(out);
@@ -94,6 +99,20 @@ export default function RegistryCompanies() {
           ))}
         </div>
 
+        <div className="rg__filters">
+          <select
+            className="rg__select"
+            value={status}
+            onChange={(e) => update({ status: e.target.value })}
+          >
+            {STATUSES.map((item) => (
+              <option key={item} value={item}>
+                {t(`registry.statusFilter.${item}`)}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {loading && <p className="rg__status">{t("common.loading")}</p>}
         {!loading && result.failed && (
           <p className="rg__status">{t("registry.loadError")}</p>
@@ -122,7 +141,7 @@ export default function RegistryCompanies() {
                         >
                           {t(`registry.type.${item.zhkh_type}`)}
                         </span>
-                        {item.status === "gone" && (
+                        {item.status !== "active" && (
                           <span className="rg__badge rg__badge--gone">
                             {t("registry.status.gone")}
                           </span>

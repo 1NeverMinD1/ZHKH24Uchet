@@ -13,6 +13,9 @@ export const registryMessages = {
     "registry.typePlural.uk": "Управляющие компании",
     "registry.typePlural.service": "Сервисные компании",
     "registry.status.gone": "Исключена из реестра",
+    "registry.statusFilter.active": "Действующие",
+    "registry.statusFilter.gone": "Исключённые из реестра",
+    "registry.statusFilter.all": "Все статусы",
 
     "registry.bin": "БИН",
     "registry.housesNow": "домов сейчас",
@@ -109,6 +112,9 @@ export const registryMessages = {
     "registry.typePlural.uk": "Басқарушы компаниялар",
     "registry.typePlural.service": "Сервистік компаниялар",
     "registry.status.gone": "Тізілімнен шығарылған",
+    "registry.statusFilter.active": "Жұмыс істеп тұрғандар",
+    "registry.statusFilter.gone": "Тізілімнен шығарылғандар",
+    "registry.statusFilter.all": "Барлық мәртебелер",
 
     "registry.bin": "БСН",
     "registry.housesNow": "үй қазір",

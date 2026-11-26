@@ -5,10 +5,11 @@ const get = async (path, params) => {
   return data;
 };
 
-export const fetchRegistryCompanies = ({ type, q, page } = {}) =>
+export const fetchRegistryCompanies = ({ type, q, page, status } = {}) =>
   get("/registry/companies", {
     type: type || undefined,
     q: q || undefined,
+    status: status || undefined,
     page: page || 1,
   });
 
