@@ -197,6 +197,8 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
 
     async complexes(ctx: any) {
       const q = String(ctx.query.q || "").trim();
+      const city = String(ctx.query.city || "").trim();
+      const multi = ctx.query.multi === "1";
       const page = pageOf(ctx.query.page);
       const where: string[] = [];
       const params: any[] = [];
@@ -204,25 +206,39 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
         where.push("(cx.name ilike ? or cx.city ilike ?)");
         params.push(`%${q}%`, `%${q}%`);
       }
+      if (city) {
+        where.push("cx.city = ?");
+        params.push(city);
+      }
       const whereSql = where.length ? `where ${where.join(" and ")}` : "";
+      const havingSql = multi ? "having count(xl.house_id) >= 2" : "";
+      const base = `
+        select cx.name, cx.slug, cx.city, cx.apartments,
+               count(xl.house_id)::int as houses
+        from complexes cx
+        left join houses_complex_lnk xl on xl.complex_id = cx.id
+        ${whereSql}
+        group by cx.id
+        ${havingSql}`;
       const [{ total }] = await rows(
-        `select count(*)::int as total from complexes cx ${whereSql}`,
+        `select count(*)::int as total from (${base}) b`,
         params,
       );
       const items = await rows(
-        `select cx.name, cx.slug, cx.city, cx.apartments,
-                count(xl.house_id)::int as houses
-         from complexes cx
-         left join houses_complex_lnk xl on xl.complex_id = cx.id
-         ${whereSql}
-         group by cx.id
-         order by count(xl.house_id) desc, cx.name
+        `select * from (${base}) b
+         order by b.houses desc, b.name
          limit ? offset ?`,
         [...params, PAGE_SIZE, (page - 1) * PAGE_SIZE],
       );
-      ctx.body = { items, total, page, pageSize: PAGE_SIZE };
+      const cities = await rows(
+        `select cx.city, count(*)::int as count
+         from complexes cx
+         where coalesce(cx.city, '') <> ''
+         group by cx.city
+         order by count(*) desc, cx.city`,
+      );
+      ctx.body = { items, total, page, pageSize: PAGE_SIZE, cities };
     },
-
     async complex(ctx: any) {
       const slug = String(ctx.params.slug || "");
       const [complex] = await rows(

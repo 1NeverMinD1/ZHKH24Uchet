@@ -118,6 +118,47 @@
     gap: 8px;
   }
 
+  &__filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 20px;
+  }
+
+  &__select {
+    min-width: 220px;
+    padding: 10px 12px;
+    font-family: inherit;
+    font-size: 14px;
+    color: #1c1c1c;
+    background: #ffffff;
+    border: 1px solid #dce3ea;
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+
+    &:focus {
+      border-color: #3a6ea5;
+    }
+  }
+
+  &__check {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #2b3440;
+    cursor: pointer;
+    user-select: none;
+
+    input {
+      width: 16px;
+      height: 16px;
+      accent-color: #3a6ea5;
+      cursor: pointer;
+    }
+  }
+
   &__tab {
     padding: 8px 14px;
     font-family: inherit;

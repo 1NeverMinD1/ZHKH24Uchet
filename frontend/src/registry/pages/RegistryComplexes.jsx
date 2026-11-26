@@ -10,10 +10,13 @@ export default function RegistryComplexes() {
   const { t } = useLocale();
   const [params, setParams] = useSearchParams();
   const q = params.get("q") || "";
+  const city = params.get("city") || "";
+  const multi = params.get("multi") === "1";
   const page = Math.max(1, parseInt(params.get("page") || "1", 10) || 1);
-  const key = `${q}|${page}`;
+  const key = `${q}|${city}|${multi}|${page}`;
 
   const [input, setInput] = useState(q);
+  const [cities, setCities] = useState([]);
   const [result, setResult] = useState({
     key: null,
     data: null,
@@ -22,9 +25,11 @@ export default function RegistryComplexes() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchRegistryComplexes({ q, page })
+    fetchRegistryComplexes({ q, city, multi, page })
       .then((data) => {
-        if (!cancelled) setResult({ key, data, failed: false });
+        if (cancelled) return;
+        setResult({ key, data, failed: false });
+        if (Array.isArray(data.cities)) setCities(data.cities);
       })
       .catch(() => {
         if (!cancelled) setResult({ key, data: null, failed: true });
@@ -32,16 +37,18 @@ export default function RegistryComplexes() {
     return () => {
       cancelled = true;
     };
-  }, [key, q, page]);
+  }, [key, q, city, multi, page]);
 
   const loading = result.key !== key;
   const data = loading ? null : result.data;
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
   const update = (next) => {
-    const merged = { q, page: 1, ...next };
+    const merged = { q, city, multi, page: 1, ...next };
     const out = {};
     if (merged.q) out.q = merged.q;
+    if (merged.city) out.city = merged.city;
+    if (merged.multi) out.multi = "1";
     if (merged.page > 1) out.page = String(merged.page);
     setParams(out);
   };
@@ -71,6 +78,30 @@ export default function RegistryComplexes() {
           </button>
         </form>
 
+        <div className="rg__filters">
+          <select
+            className="rg__select"
+            value={city}
+            onChange={(e) => update({ city: e.target.value })}
+          >
+            <option value="">{t("registry.complexes.allCities")}</option>
+            {cities.map((item) => (
+              <option key={item.city} value={item.city}>
+                {item.city} ({item.count})
+              </option>
+            ))}
+          </select>
+
+          <label className="rg__check">
+            <input
+              type="checkbox"
+              checked={multi}
+              onChange={(e) => update({ multi: e.target.checked })}
+            />
+            {t("registry.complexes.multi")}
+          </label>
+        </div>
+
         {loading && <p className="rg__status">{t("common.loading")}</p>}
         {!loading && result.failed && (
           <p className="rg__status">{t("registry.loadError")}</p>
@@ -84,7 +115,9 @@ export default function RegistryComplexes() {
 
             {data.items.length === 0 ? (
               <p className="rg__status">
-                {q ? t("registry.empty") : t("registry.complexes.empty")}
+                {q || city || multi
+                  ? t("registry.empty")
+                  : t("registry.complexes.empty")}
               </p>
             ) : (
               <div className="rg__tiles">

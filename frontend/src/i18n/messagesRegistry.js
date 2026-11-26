@@ -86,6 +86,8 @@ export const registryMessages = {
     "registry.complexes.apartments": "квартир: {count}",
     "registry.complexes.empty": "Жилые комплексы пока не добавлены",
     "registry.complexes.placeholder": "Название ЖК или город",
+    "registry.complexes.allCities": "Все города",
+    "registry.complexes.multi": "Только с несколькими домами",
 
     "registry.complex.seoTitle": "ЖК {name} — реестр ЖКХ",
     "registry.complex.houses": "Домов",
@@ -181,6 +183,8 @@ export const registryMessages = {
     "registry.complexes.apartments": "пәтер: {count}",
     "registry.complexes.empty": "Тұрғын кешендер әлі қосылмаған",
     "registry.complexes.placeholder": "Тұрғын кешен атауы немесе қала",
+    "registry.complexes.allCities": "Барлық қалалар",
+    "registry.complexes.multi": "Тек бірнеше үйі барлары",
 
     "registry.complex.seoTitle": "{name} ТК — ТКШ тізілімі",
     "registry.complex.houses": "Үйлер",
