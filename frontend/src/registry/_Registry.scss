@@ -103,7 +103,10 @@
       }
     }
 
-    &:disabled {
+    &:disabled,
+    &:disabled:hover {
+      color: #3a6ea5;
+      background: #ffffff;
       opacity: 0.5;
       cursor: default;
     }
