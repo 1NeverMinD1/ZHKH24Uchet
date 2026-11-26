@@ -96,7 +96,7 @@ export default function RegistryComplex() {
                   {placeOf(h, locale) && (
                     <span className="rg__card-meta">{placeOf(h, locale)}</span>
                   )}
-                  <span className="rg__card-meta">
+                  <span className="rg__row-manager">
                     {h.manager ? (
                       <>
                         <span

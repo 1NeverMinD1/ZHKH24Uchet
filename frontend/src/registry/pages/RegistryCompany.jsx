@@ -5,7 +5,7 @@ import { Link } from "../../i18n/router";
 import { useLocale } from "../../i18n/context";
 import { fetchRegistryCompany } from "../../api/registry";
 import {
-  nameOf,
+  fullNameOf,
   cityOf,
   placeOf,
   periodText,
@@ -52,7 +52,7 @@ export default function RegistryCompany() {
     return <Status text={t("registry.notFound")} />;
 
   const { company, houses } = result.data;
-  const name = nameOf(company, locale);
+  const name = fullNameOf(company, locale);
   const now = houses.filter((h) => !h.ended_at);
   const past = houses.filter((h) => h.ended_at);
   const complexes = new Set(

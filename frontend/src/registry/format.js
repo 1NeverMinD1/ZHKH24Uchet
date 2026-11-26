@@ -1,13 +1,42 @@
 export const TYPES = ["osi", "ksk", "uk", "service"];
 
-export const nameOf = (item, locale) =>
+export const fullNameOf = (item, locale) =>
   (locale === "kk" && item?.name_kk) || item?.name_ru || "";
 
+const NAME_NOISE = [
+  /^(ПОТРЕБИТЕЛЬСКИЙ\s+)?КООПЕРАТИВ\s+СОБСТВЕННИКОВ\s+(КВАРТИР|ПОМЕЩЕНИЙ)(\s*\([^)]*\))?\s*/i,
+  /^ОБЪЕДИНЕНИЕ\s+СОБСТВЕННИКОВ\s+ИМУЩЕСТВА\s*/i,
+  /\s*ОБЪЕДИНЕНИ[ЕЯ]\s+СОБСТВЕННИКОВ\s+ИМУЩЕСТВА$/i,
+  /\s*МҮЛІК(ТІҢ)?\s+МЕНШІК\s+ИЕЛЕРІ(НІҢ)?\s+БІРЛЕСТІГІ$/i,
+  /\s*ПӘТЕРЛЕР.*КООПЕРАТИВІ$/i,
+  /^(ОСИ|КСК|КСП)\s+/i,
+  /\s+(ОСИ|ҮЖК)$/i,
+];
+
+export const nameOf = (item, locale) => {
+  const full = fullNameOf(item, locale);
+  let short = full.trim().replace(/^["«\s]+/, "");
+  for (const re of NAME_NOISE) short = short.replace(re, "");
+  short = short.replace(/^["«\s]+|["»\s]+$/g, "").trim();
+  return short || full;
+};
+
+const prettyPlace = (value) => {
+  const text = String(value || "")
+    .replace(/^(Г|П|С|А)\.\s*/i, "")
+    .replace(/\s+(Қ\.|ҚАЛАСЫ)$/i, "")
+    .trim();
+  if (!text) return "";
+  return text
+    .toLowerCase()
+    .replace(/(^|[\s-])(\S)/g, (_m, sep, ch) => sep + ch.toUpperCase());
+};
+
 export const cityOf = (item, locale) =>
-  (locale === "kk" && item?.city_kk) || item?.city_ru || "";
+  prettyPlace((locale === "kk" && item?.city_kk) || item?.city_ru);
 
 export const districtOf = (item, locale) =>
-  (locale === "kk" && item?.district_kk) || item?.district_ru || "";
+  prettyPlace((locale === "kk" && item?.district_kk) || item?.district_ru);
 
 export const formatNumber = (value) =>
   typeof value === "number" ? value.toLocaleString("ru-RU") : "—";

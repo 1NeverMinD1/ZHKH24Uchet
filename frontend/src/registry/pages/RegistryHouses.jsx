@@ -106,7 +106,7 @@ export default function RegistryHouses() {
                           </span>
                         )}
                       </span>
-                      <span className="rg__card-meta">
+                      <span className="rg__row-manager">
                         {h.manager ? (
                           <>
                             <span
