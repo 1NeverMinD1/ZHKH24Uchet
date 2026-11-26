@@ -221,7 +221,7 @@ export default function CompanyFilters({ filters, update, onReset }) {
                 className="filters__select"
                 value={region}
                 onChange={(e) =>
-                  update({ region: e.target.value, district: "" })
+                  update({ region: e.target.value, district: "", kato: "" })
                 }
               >
                 <option value="">{t("history.regionAll")}</option>
@@ -239,7 +239,7 @@ export default function CompanyFilters({ filters, update, onReset }) {
                 className="filters__select"
                 value={filters.district || ""}
                 disabled={!region}
-                onChange={(e) => update({ district: e.target.value })}
+                onChange={(e) => update({ district: e.target.value, kato: "" })}
               >
                 <option value="">{t("history.districtAll")}</option>
                 {districtList.map((item) => (
@@ -249,6 +249,16 @@ export default function CompanyFilters({ filters, update, onReset }) {
                 ))}
               </select>
             </label>
+
+            {filters.kato && (
+              <button
+                className="filters__reset"
+                type="button"
+                onClick={() => update({ kato: "" })}
+              >
+                {t("filters.kato", { code: filters.kato })} ×
+              </button>
+            )}
           </div>
 
           <div className="filters__row">
