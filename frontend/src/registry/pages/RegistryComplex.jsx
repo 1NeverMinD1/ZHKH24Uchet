@@ -5,6 +5,7 @@ import { Link } from "../../i18n/router";
 import { useLocale } from "../../i18n/context";
 import { fetchRegistryComplex } from "../../api/registry";
 import { TYPES, nameOf, placeOf } from "../format";
+import ComplexPassport from "../ComplexPassport";
 
 function Status({ text }) {
   return (
@@ -89,39 +90,51 @@ export default function RegistryComplex() {
           ))}
         </div>
 
-        <div className="rg__section">
-          <h2 className="rg__subtitle">{t("registry.complex.housesTitle")}</h2>
-          <div className="rg__rows">
-            {houses.map((h) => (
-              <Link
-                key={h.address_id}
-                to={`/house/${h.address_id}`}
-                className="rg__row"
-              >
-                <div className="rg__row-main">
-                  <span className="rg__row-title">{h.address}</span>
-                  {placeOf(h, locale) && (
-                    <span className="rg__card-meta">{placeOf(h, locale)}</span>
-                  )}
-                  <span className="rg__row-manager">
-                    {h.manager ? (
-                      <>
-                        <span
-                          className={`rg__badge rg__badge--${h.manager.role}`}
-                        >
-                          {t(`registry.type.${h.manager.role}`)}
-                        </span>
-                        <span>{nameOf(h.manager, locale)}</span>
-                      </>
-                    ) : (
-                      <span>{t("registry.houses.noManager")}</span>
-                    )}
-                  </span>
-                </div>
-              </Link>
-            ))}
+        {complex.passport && (
+          <div className="rg__section">
+            <ComplexPassport passport={complex.passport} />
           </div>
-        </div>
+        )}
+
+        {houses.length > 0 && (
+          <div className="rg__section">
+            <h2 className="rg__subtitle">
+              {t("registry.complex.housesTitle")}
+            </h2>
+            <div className="rg__rows">
+              {houses.map((h) => (
+                <Link
+                  key={h.address_id}
+                  to={`/house/${h.address_id}`}
+                  className="rg__row"
+                >
+                  <div className="rg__row-main">
+                    <span className="rg__row-title">{h.address}</span>
+                    {placeOf(h, locale) && (
+                      <span className="rg__card-meta">
+                        {placeOf(h, locale)}
+                      </span>
+                    )}
+                    <span className="rg__row-manager">
+                      {h.manager ? (
+                        <>
+                          <span
+                            className={`rg__badge rg__badge--${h.manager.role}`}
+                          >
+                            {t(`registry.type.${h.manager.role}`)}
+                          </span>
+                          <span>{nameOf(h.manager, locale)}</span>
+                        </>
+                      ) : (
+                        <span>{t("registry.houses.noManager")}</span>
+                      )}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

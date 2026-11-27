@@ -13,6 +13,7 @@ import {
   formatDate,
   BINDEX_URL,
 } from "../format";
+import ComplexPassport from "../ComplexPassport";
 
 const EARLY = "2018-01-01";
 
@@ -367,6 +368,8 @@ export default function RegistryHouse() {
                 )}
               </dl>
             </div>
+
+            <ComplexPassport passport={house.passport} />
 
             {neighbors.length > 0 && (
               <div className="rg__panel">

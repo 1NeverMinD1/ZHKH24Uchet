@@ -86,6 +86,18 @@ export default function RegistryComplexes() {
                     {cx.city && (
                       <span className="rg__tile-label">{cx.city}</span>
                     )}
+                    {(cx.developer || cx.build_status) && (
+                      <span className="rg__tile-label">
+                        {[
+                          cx.developer,
+                          cx.build_status &&
+                            t(`registry.passport.status.${cx.build_status}`),
+                          cx.completion_year,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    )}
                     <span className="rg__tile-label">
                       {cx.houses}{" "}
                       {t(`registry.complexes.houses.${pluralKey(cx.houses)}`)}
