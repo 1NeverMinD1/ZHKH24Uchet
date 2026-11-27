@@ -71,7 +71,8 @@ export default function RegistryHouse() {
   const past = managements.filter((m) => m.ended_at);
 
   const stats = [
-    [t("registry.house.units"), house.units],
+    [t("registry.house.companies"), house.companies],
+    [t("registry.house.units"), house.units || null],
     [t("registry.house.apartments"), house.apartments],
     [t("registry.house.floors"), house.floors],
     [t("registry.house.year"), house.year_built],

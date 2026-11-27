@@ -351,6 +351,10 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
                 h.latitude, h.longitude,
                 zhkh_city(t.id, 'ru') as city_ru, zhkh_city(t.id, 'kk') as city_kk, zhkh_place(t.id, 'ru', 'district') as district_ru, zhkh_place(t.id, 'kk', 'district') as district_kk, t.path_ru, t.path_kk,
                 cx.name as complex_name, cx.slug as complex_slug,
+                (select count(distinct cp.bin)::int
+                 from company_periods cp
+                 where cp.address_id = h.address_id
+                   and cp.to_on = (select max(to_on) from company_periods)) as companies,
                 (select count(distinct cp.unit_id)::int
                  from company_periods cp
                  where cp.address_id = h.address_id
