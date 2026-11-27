@@ -77,6 +77,15 @@ const CURRENT_HOUSES_OF_COMPANY = `
   join house_managements_house_lnk hc on hc.house_management_id = mc.id
   join houses hh on hh.id = hc.house_id`;
 
+const COMPLEX_PASSPORT = `
+  case when cx.krisha_id is not null then json_build_object(
+    'developer', cx.developer, 'build_status', cx.build_status,
+    'completion_year', cx.completion_year, 'completion_text', cx.completion_text,
+    'housing_class', cx.housing_class, 'floors_min', cx.floors_min, 'floors_max', cx.floors_max,
+    'ceiling_height', cx.ceiling_height, 'wall_type', cx.wall_type, 'finishing', cx.finishing,
+    'parking', cx.parking, 'elevator', cx.elevator, 'heating', cx.heating, 'facade', cx.facade,
+    'source_url', cx.source_url) end as passport`;
+
 export default ({ strapi }: { strapi: Core.Strapi }) => {
   const rows = async (sql: string, params: any[] = []) => {
     const result: any = await strapi.db.connection.raw(sql, params);
@@ -433,6 +442,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
                 h.latitude, h.longitude,
                 ${PLACE_COLUMNS}, t.path_ru, t.path_kk,
                 cx.name as complex_name, cx.slug as complex_slug,
+                ${COMPLEX_PASSPORT},
                 (select count(distinct cp.bin)::int
                  from company_periods cp
                  where cp.address_id = h.address_id
@@ -533,6 +543,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       const havingSql = multi ? "having count(xl.house_id) >= 2" : "";
       const base = `
         select cx.name, cx.slug, cx.city, cx.apartments,
+               cx.developer, cx.build_status, cx.completion_year, cx.housing_class,
                count(xl.house_id)::int as houses
         from complexes cx
         left join houses_complex_lnk xl on xl.complex_id = cx.id
@@ -575,7 +586,8 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       const slug = String(ctx.params.slug || "");
       const [complex] = await rows(
         `select cx.id, cx.name, cx.slug, cx.city, cx.description, cx.apartments,
-                cx.latitude, cx.longitude
+                cx.latitude, cx.longitude,
+                ${COMPLEX_PASSPORT}
          from complexes cx
          where cx.slug = ?
          limit 1`,
