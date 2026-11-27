@@ -234,7 +234,9 @@ export default function CompanyFilters({ filters, update, onReset }) {
                 ))}
               </select>
             </label>
+          </div>
 
+          <div className="filters__row">
             <label className="filters__field">
               {t("history.region")}
               <select
