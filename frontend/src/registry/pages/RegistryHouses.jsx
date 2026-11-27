@@ -128,7 +128,13 @@ export default function RegistryHouses() {
                             <span>{nameOf(h.manager, locale)}</span>
                           </>
                         ) : (
-                          <span>{t("registry.houses.noManager")}</span>
+                          <span>
+                            {t(
+                              h.has_managements
+                                ? "registry.houses.noManager"
+                                : "registry.houses.noData",
+                            )}
+                          </span>
                         )}
                       </span>
                     </div>
