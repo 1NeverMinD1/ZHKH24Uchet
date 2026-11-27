@@ -16,7 +16,12 @@ export default function useRegistryList(keys, defaults, fetcher) {
     data: null,
     failed: false,
   });
-  const [facets, setFacets] = useState({ cities: [], districts: [], city: "" });
+  const [facets, setFacets] = useState({
+    cities: [],
+    districts: [],
+    city: "",
+    years: [],
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -32,6 +37,10 @@ export default function useRegistryList(keys, defaults, fetcher) {
               : prev.cities,
           districts: Array.isArray(data.districts) ? data.districts : [],
           city: query.city || "",
+          years:
+            Array.isArray(data.years) && data.years.length
+              ? data.years
+              : prev.years,
         }));
       })
       .catch(() => {
@@ -68,6 +77,7 @@ export default function useRegistryList(keys, defaults, fetcher) {
     failed: !loading && result.failed,
     cities: facets.cities,
     districts,
+    years: facets.years,
     update,
   };
 }

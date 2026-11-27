@@ -57,12 +57,20 @@ export const fetchRegistryComplexes = ({
   city,
   district,
   multi,
+  status,
+  cls,
+  year,
+  sort,
 } = {}) =>
   get("/registry/complexes", {
     q: q || undefined,
     city: city || undefined,
     district: district || undefined,
     multi: multi ? "1" : undefined,
+    status: status || undefined,
+    cls: cls || undefined,
+    year: year || undefined,
+    sort: sort || undefined,
     page: page || 1,
   });
 
