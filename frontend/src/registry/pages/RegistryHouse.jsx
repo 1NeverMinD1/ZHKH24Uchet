@@ -179,21 +179,13 @@ export default function RegistryHouse() {
       date: m.ended_at,
       title: t("registry.event.manageEnd"),
       detail: who(m),
+      note:
+        now.length === 0 && m === lastPast ? t("registry.event.manageGap") : "",
       to: `/company/${m.slug}`,
     })),
-    ...(now.length === 0 && lastPast
-      ? [
-          {
-            key: "gap",
-            date: lastPast.ended_at,
-            title: t("registry.event.manageGap"),
-            gap: true,
-          },
-        ]
-      : []),
   ]
     .filter((item) => item.date)
-    .sort((a, b) => b.date.localeCompare(a.date) || (a.gap ? -1 : 1));
+    .sort((a, b) => b.date.localeCompare(a.date));
 
   const about = [
     [t("registry.house.city"), cityOf(house, locale)],
@@ -288,6 +280,9 @@ export default function RegistryHouse() {
                               item.detail
                             )}
                           </span>
+                        )}
+                        {item.note && (
+                          <span className="rg__tl-note">{item.note}</span>
                         )}
                       </li>
                     ))}
