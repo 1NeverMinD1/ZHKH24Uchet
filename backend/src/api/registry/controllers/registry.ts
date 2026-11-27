@@ -385,8 +385,43 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
         [house.id],
       );
 
+      const [{ last }] = await rows(
+        "select to_char(max(to_on), 'YYYY-MM-DD') as last from company_periods",
+      );
+
+      const companies = await rows(
+        `select c.bin, c.slug, c.name_ru, c.name_kk, c.legal_form, c.zhkh_type, c.zhkh_registry,
+                string_agg(distinct u.label, ', ') as units
+         from company_periods cp
+         join companies c on c.bin = cp.bin
+         left join units u on u.id = cp.unit_id
+         where cp.address_id = ? and cp.to_on = ?::date
+         group by c.id
+         order by c.zhkh_registry desc nulls last, c.name_ru
+         limit 50`,
+        [house.address_id, last],
+      );
+
+      const neighbors = house.complex_slug
+        ? await rows(
+            `select h.address_id, h.address, ${CURRENT_MANAGER}
+             from houses_complex_lnk xl
+             join houses h on h.id = xl.house_id
+             where xl.complex_id = (select complex_id from houses_complex_lnk where house_id = ? limit 1)
+               and h.id <> ?
+             order by h.address`,
+            [house.id, house.id],
+          )
+        : [];
+
       const { id, ...data } = house;
-      ctx.body = { house: data, managements };
+      ctx.body = {
+        house: data,
+        managements,
+        companies,
+        neighbors,
+        lastSnapshot: last,
+      };
     },
 
     async complexes(ctx: any) {

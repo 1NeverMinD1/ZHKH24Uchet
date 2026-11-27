@@ -4,7 +4,17 @@ import SEO from "../../components/seo/SEO";
 import { Link } from "../../i18n/router";
 import { useLocale } from "../../i18n/context";
 import { fetchRegistryHouse } from "../../api/registry";
-import { nameOf, placeOf, periodText, BINDEX_URL } from "../format";
+import {
+  nameOf,
+  cityOf,
+  districtOf,
+  placeOf,
+  periodText,
+  formatDate,
+  BINDEX_URL,
+} from "../format";
+
+const EARLY = "2018-01-01";
 
 function Status({ text }) {
   return (
@@ -24,7 +34,7 @@ function ManagementRow({ item, locale, t }) {
           <span className={`rg__badge rg__badge--${item.role}`}>
             {t(`registry.type.${item.role}`)}
           </span>
-          {item.status === "gone" && (
+          {item.status !== "active" && (
             <span className="rg__badge rg__badge--gone">
               {t("registry.status.gone")}
             </span>
@@ -40,6 +50,35 @@ function ManagementRow({ item, locale, t }) {
       </div>
       <span className="rg__row-side">{periodText(item, t)}</span>
     </Link>
+  );
+}
+
+function CompanyLinkRow({ c, locale, t }) {
+  const content = (
+    <div className="rg__row-main">
+      <span className="rg__mini-title">{nameOf(c, locale)}</span>
+      <span className="rg__card-meta">
+        <span>
+          {t("registry.bin")} {c.bin}
+        </span>
+        {c.legal_form && <span>{t(`legalForm.${c.legal_form}`)}</span>}
+        {c.units && <span>{c.units}</span>}
+      </span>
+    </div>
+  );
+  return c.zhkh_registry ? (
+    <Link to={`/company/${c.slug}`} className="rg__mini-row">
+      {content}
+    </Link>
+  ) : (
+    <a
+      className="rg__mini-row"
+      href={`${BINDEX_URL}/${locale}/company/${c.slug}`}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {content}
+    </a>
   );
 }
 
@@ -66,17 +105,106 @@ export default function RegistryHouse() {
   if (result.failed || !result.data)
     return <Status text={t("registry.notFound")} />;
 
-  const { house, managements } = result.data;
+  const { house, managements, companies = [], neighbors = [] } = result.data;
   const now = managements.filter((m) => !m.ended_at);
   const past = managements.filter((m) => m.ended_at);
+  const lastPast = past[0];
+  const companiesCount = house.companies ?? companies.length;
+  const who = (m) =>
+    `${t(`registry.typeOne.${m.role}`)} «${nameOf(m, locale)}»`;
 
-  const stats = [
-    [t("registry.house.companies"), house.companies],
+  const summary = [
+    now.length > 0
+      ? now
+          .map((m) =>
+            t("registry.houseSummary.now", {
+              who: who(m),
+              since: periodText(m, t),
+            }),
+          )
+          .join(" ")
+      : lastPast
+        ? t("registry.houseSummary.noneSince", {
+            date: formatDate(lastPast.ended_at),
+          })
+        : t("registry.houseSummary.none"),
+    lastPast &&
+      t("registry.houseSummary.before", {
+        who: who(lastPast),
+        period: periodText(lastPast, t),
+      }),
+    companiesCount > 0 &&
+      t("registry.houseSummary.companies", { count: companiesCount }),
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const chips = [
+    now.length > 0
+      ? { key: "managed", tone: "", text: t("registry.houseChip.managed") }
+      : {
+          key: "managed",
+          tone: "warn",
+          text: t("registry.houseChip.noManager"),
+        },
+    past.length > 0 && {
+      key: "changes",
+      tone: past.length >= 2 ? "warn" : "",
+      text: t("registry.houseChip.changes", { count: past.length }),
+    },
+    house.complex_name && {
+      key: "complex",
+      tone: "",
+      text: t("registry.complexLabel", { name: house.complex_name }),
+    },
+    companiesCount > 0 && {
+      key: "companies",
+      tone: "",
+      text: t("registry.houseChip.companies", { count: companiesCount }),
+    },
+  ].filter(Boolean);
+
+  const timeline = [
+    ...managements.map((m) => ({
+      key: `s${m.bin}${m.role}${m.started_at}`,
+      date: m.started_at,
+      early: m.started_at && m.started_at <= EARLY,
+      title: t("registry.event.manageStart"),
+      detail: who(m),
+      to: `/company/${m.slug}`,
+    })),
+    ...past.map((m) => ({
+      key: `e${m.bin}${m.role}${m.ended_at}`,
+      date: m.ended_at,
+      title: t("registry.event.manageEnd"),
+      detail: who(m),
+      to: `/company/${m.slug}`,
+    })),
+    ...(now.length === 0 && lastPast
+      ? [
+          {
+            key: "gap",
+            date: lastPast.ended_at,
+            title: t("registry.event.manageGap"),
+            gap: true,
+          },
+        ]
+      : []),
+  ]
+    .filter((item) => item.date)
+    .sort((a, b) => b.date.localeCompare(a.date) || (a.gap ? -1 : 1));
+
+  const about = [
+    [t("registry.house.city"), cityOf(house, locale)],
+    [t("registry.house.district"), districtOf(house, locale)],
+    [t("registry.house.companies"), companiesCount || null],
     [t("registry.house.units"), house.units || null],
     [t("registry.house.apartments"), house.apartments],
     [t("registry.house.floors"), house.floors],
     [t("registry.house.year"), house.year_built],
-  ].filter(([, value]) => value !== null && value !== undefined);
+  ].filter(
+    ([, value]) => value !== null && value !== undefined && value !== "",
+  );
 
   return (
     <section className="rg">
@@ -85,6 +213,14 @@ export default function RegistryHouse() {
         noindex
       />
       <div className="rg__inner">
+        <nav className="rg__crumbs">
+          <Link to="/">{t("registry.crumbs.home")}</Link>
+          <span className="rg__crumbs-sep">→</span>
+          <Link to="/houses">{t("registry.houses.title")}</Link>
+          <span className="rg__crumbs-sep">→</span>
+          <span>{house.address}</span>
+        </nav>
+
         <div className="rg__head">
           <h1 className="rg__name">{house.address}</h1>
           <span className="rg__card-meta">
@@ -95,60 +231,156 @@ export default function RegistryHouse() {
               </Link>
             )}
           </span>
-          <a
-            className="rg__ext"
-            href={`${BINDEX_URL}/${locale}/address/${house.address_id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {t("registry.toBindexAddress")}
-          </a>
-        </div>
-
-        {stats.length > 0 && (
-          <div className="rg__stats">
-            {stats.map(([label, value]) => (
-              <div key={label} className="rg__stat">
-                <span className="rg__tile-value">{value}</span>
-                <span className="rg__tile-label">{label}</span>
-              </div>
+          <p className="rg__summary">{summary}</p>
+          <div className="rg__chips">
+            {chips.map((chip) => (
+              <span
+                key={chip.key}
+                className={`rg__chip${chip.tone ? ` rg__chip--${chip.tone}` : ""}`}
+              >
+                {chip.text}
+              </span>
             ))}
           </div>
-        )}
-
-        <div className="rg__section">
-          <h2 className="rg__subtitle">{t("registry.house.now")}</h2>
-          {now.length === 0 ? (
-            <p className="rg__status">{t("registry.house.nowEmpty")}</p>
-          ) : (
-            <div className="rg__rows">
-              {now.map((m) => (
-                <ManagementRow
-                  key={`${m.bin}-${m.role}`}
-                  item={m}
-                  locale={locale}
-                  t={t}
-                />
-              ))}
-            </div>
-          )}
         </div>
 
-        {past.length > 0 && (
-          <div className="rg__section">
-            <h2 className="rg__subtitle">{t("registry.house.history")}</h2>
-            <div className="rg__rows">
-              {past.map((m) => (
-                <ManagementRow
-                  key={`${m.bin}-${m.role}-${m.ended_at}`}
-                  item={m}
-                  locale={locale}
-                  t={t}
-                />
-              ))}
+        <div className="rg__layout">
+          <div className="rg__main">
+            <div className="rg__section">
+              <h2 className="rg__subtitle">{t("registry.houseSection.now")}</h2>
+              {now.length === 0 ? (
+                <p className="rg__status">{t("registry.house.nowEmpty")}</p>
+              ) : (
+                <div className="rg__rows">
+                  {now.map((m) => (
+                    <ManagementRow
+                      key={`${m.bin}-${m.role}`}
+                      item={m}
+                      locale={locale}
+                      t={t}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {timeline.length > 0 && (
+              <div className="rg__section">
+                <h2 className="rg__subtitle">
+                  {t("registry.houseSection.history")}
+                </h2>
+                <div className="rg__panel">
+                  <ol className="rg__tl">
+                    {timeline.map((item) => (
+                      <li key={item.key} className="rg__tl-item">
+                        <span className="rg__tl-date">
+                          {item.early
+                            ? `≤ ${formatDate(item.date)}`
+                            : formatDate(item.date)}
+                        </span>
+                        <span className="rg__tl-title">{item.title}</span>
+                        {item.detail && (
+                          <span className="rg__tl-detail">
+                            {item.to ? (
+                              <Link to={item.to}>{item.detail}</Link>
+                            ) : (
+                              item.detail
+                            )}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </div>
+            )}
+
+            <div className="rg__section">
+              <h2 className="rg__subtitle">
+                {t("registry.houseSection.companies", {
+                  count: companiesCount,
+                })}
+              </h2>
+              <div className="rg__panel">
+                {companies.length === 0 ? (
+                  <p className="rg__status">
+                    {t("registry.houseSection.companiesEmpty")}
+                  </p>
+                ) : (
+                  <div className="rg__mini">
+                    {companies.map((c) => (
+                      <CompanyLinkRow key={c.bin} c={c} locale={locale} t={t} />
+                    ))}
+                  </div>
+                )}
+                <a
+                  className="rg__ext"
+                  href={`${BINDEX_URL}/${locale}/address/${house.address_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t("registry.toBindexAddress")}
+                </a>
+              </div>
             </div>
           </div>
-        )}
+
+          <aside className="rg__aside">
+            <div className="rg__panel">
+              <h2 className="rg__panel-title">
+                {t("registry.houseSection.about")}
+              </h2>
+              <dl className="rg__facts">
+                {about.map(([label, value]) => (
+                  <div key={label} className="rg__fact">
+                    <dt className="rg__fact-label">{label}</dt>
+                    <dd className="rg__fact-value">{value}</dd>
+                  </div>
+                ))}
+                {house.complex_name && (
+                  <div className="rg__fact">
+                    <dt className="rg__fact-label">
+                      {t("registry.house.complex")}
+                    </dt>
+                    <dd className="rg__fact-value">
+                      <Link to={`/complex/${house.complex_slug}`}>
+                        {house.complex_name}
+                      </Link>
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+
+            {neighbors.length > 0 && (
+              <div className="rg__panel">
+                <h2 className="rg__panel-title">
+                  {t("registry.houseSection.neighbors", {
+                    count: neighbors.length,
+                  })}
+                </h2>
+                <div className="rg__mini">
+                  {neighbors.map((n) => (
+                    <Link
+                      key={n.address_id}
+                      to={`/house/${n.address_id}`}
+                      className="rg__mini-row"
+                    >
+                      <div className="rg__row-main">
+                        <span className="rg__mini-title">{n.address}</span>
+                        <span className="rg__card-meta">
+                          {n.manager
+                            ? `${t(`registry.type.${n.manager.role}`)} · ${nameOf(n.manager, locale)}`
+                            : t("registry.houses.noManager")}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </aside>
+        </div>
       </div>
     </section>
   );

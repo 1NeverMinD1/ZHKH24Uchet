@@ -175,6 +175,31 @@ export const registryMessages = {
 
     "registry.house.seoTitle": "{address} — кто обслуживает дом",
     "registry.house.companies": "Компаний по адресу",
+    "registry.house.city": "Город",
+    "registry.house.district": "Район",
+    "registry.house.complex": "ЖК",
+    "registry.houseSummary.now": "Дом обслуживает {who} {since}.",
+    "registry.houseSummary.none":
+      "Сейчас дом не обслуживает ни одна компания из реестра.",
+    "registry.houseSummary.noneSince":
+      "Сейчас дом не обслуживает ни одна компания из реестра — с {date}.",
+    "registry.houseSummary.before": "До этого — {who} ({period}).",
+    "registry.houseSummary.companies":
+      "По адресу зарегистрировано компаний: {count}.",
+    "registry.houseChip.managed": "Есть обслуживающая компания",
+    "registry.houseChip.noManager": "Без обслуживающей компании",
+    "registry.houseChip.changes": "Смен управления: {count}",
+    "registry.houseChip.companies": "Компаний по адресу: {count}",
+    "registry.houseSection.now": "Кто обслуживает",
+    "registry.houseSection.history": "История управления",
+    "registry.houseSection.companies": "Компании по адресу ({count})",
+    "registry.houseSection.companiesEmpty":
+      "На последний срез по адресу нет зарегистрированных компаний",
+    "registry.houseSection.about": "О доме",
+    "registry.houseSection.neighbors": "Другие дома ЖК ({count})",
+    "registry.event.manageStart": "Начало обслуживания",
+    "registry.event.manageEnd": "Окончание обслуживания",
+    "registry.event.manageGap": "Дом остался без обслуживающей компании",
     "registry.house.units": "Помещений с компаниями",
     "registry.house.apartments": "Квартир",
     "registry.house.floors": "Этажей",
@@ -389,6 +414,31 @@ export const registryMessages = {
 
     "registry.house.seoTitle": "{address} — үйге кім қызмет көрсетеді",
     "registry.house.companies": "Мекенжайдағы компаниялар",
+    "registry.house.city": "Қала",
+    "registry.house.district": "Аудан",
+    "registry.house.complex": "Тұрғын кешен",
+    "registry.houseSummary.now": "Үйге {who} қызмет көрсетеді, {since}.",
+    "registry.houseSummary.none":
+      "Қазір үйге тізілімдегі бірде-бір компания қызмет көрсетпейді.",
+    "registry.houseSummary.noneSince":
+      "Қазір үйге тізілімдегі бірде-бір компания қызмет көрсетпейді — {date} бастап.",
+    "registry.houseSummary.before": "Бұған дейін — {who} ({period}).",
+    "registry.houseSummary.companies":
+      "Мекенжайда тіркелген компаниялар: {count}.",
+    "registry.houseChip.managed": "Қызмет көрсететін компания бар",
+    "registry.houseChip.noManager": "Қызмет көрсететін компания жоқ",
+    "registry.houseChip.changes": "Басқару ауысуы: {count}",
+    "registry.houseChip.companies": "Мекенжайдағы компаниялар: {count}",
+    "registry.houseSection.now": "Кім қызмет көрсетеді",
+    "registry.houseSection.history": "Басқару тарихы",
+    "registry.houseSection.companies": "Мекенжайдағы компаниялар ({count})",
+    "registry.houseSection.companiesEmpty":
+      "Соңғы деректер бойынша мекенжайда тіркелген компаниялар жоқ",
+    "registry.houseSection.about": "Үй туралы",
+    "registry.houseSection.neighbors": "Кешендегі басқа үйлер ({count})",
+    "registry.event.manageStart": "Қызмет көрсетудің басталуы",
+    "registry.event.manageEnd": "Қызмет көрсетудің аяқталуы",
+    "registry.event.manageGap": "Үй қызмет көрсететін компаниясыз қалды",
     "registry.house.units": "Компаниялары бар үй-жайлар",
     "registry.house.apartments": "Пәтерлер",
     "registry.house.floors": "Қабаттар",
