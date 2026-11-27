@@ -129,6 +129,26 @@ export default function CompanyFilters({ filters, update, onReset }) {
     (options?.legalForms || []).map((item) => [item.code, item.count]),
   );
 
+  const actions = (
+    <>
+      <button
+        className="filters__reset"
+        type="button"
+        onClick={() => setExpanded((value) => !value)}
+      >
+        {expanded
+          ? t("filters.less")
+          : `${t("filters.more")}${advancedCount > 0 ? ` · ${advancedCount}` : ""}`}
+      </button>
+
+      {hasFilters && (
+        <button className="filters__reset" type="button" onClick={onReset}>
+          {t("history.reset")}
+        </button>
+      )}
+    </>
+  );
+
   const dictionary = (name, list) => (
     <label className="filters__field">
       {t(`filters.${name}`)}
@@ -349,25 +369,7 @@ export default function CompanyFilters({ filters, update, onReset }) {
               </select>
             </label>
 
-            <button
-              className="filters__reset"
-              type="button"
-              onClick={() => setExpanded((value) => !value)}
-            >
-              {expanded
-                ? t("filters.less")
-                : `${t("filters.more")}${advancedCount > 0 ? ` · ${advancedCount}` : ""}`}
-            </button>
-
-            {hasFilters && (
-              <button
-                className="filters__reset"
-                type="button"
-                onClick={onReset}
-              >
-                {t("history.reset")}
-              </button>
-            )}
+            {!expanded && actions}
           </div>
 
           {expanded && (
@@ -427,6 +429,7 @@ export default function CompanyFilters({ filters, update, onReset }) {
                   />
                 </label>
               </div>
+              <div className="filters__row">{actions}</div>
             </>
           )}
         </div>
