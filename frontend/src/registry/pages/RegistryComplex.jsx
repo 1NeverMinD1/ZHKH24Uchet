@@ -54,7 +54,7 @@ export default function RegistryComplex() {
     });
 
   const stats = [
-    [t("registry.complex.houses"), houses.length],
+    [t("registry.complex.houses"), houses.length || null],
     [t("registry.complex.apartments"), complex.apartments],
     ...TYPES.filter((role) => byRole[role]).map((role) => [
       t(`registry.typePlural.${role}`),

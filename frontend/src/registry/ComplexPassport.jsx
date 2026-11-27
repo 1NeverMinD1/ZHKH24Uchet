@@ -49,8 +49,16 @@ export default function ComplexPassport({ passport }) {
     p.floors_min && p.floors_max && p.floors_min !== p.floors_max
       ? `${p.floors_min}–${p.floors_max}`
       : p.floors_max || p.floors_min;
-  const completion =
-    locale === "kk"
+  const queueYears = /очеред/i.test(p.completion_text || "")
+    ? (p.completion_text.match(/(19|20)\d{2}/g) || []).map(Number)
+    : [];
+  const minYear = Math.min(...queueYears);
+  const maxYear = Math.max(...queueYears);
+  const completion = queueYears.length
+    ? minYear === maxYear
+      ? minYear
+      : `${minYear}–${maxYear}`
+    : locale === "kk"
       ? p.completion_year
       : p.completion_text || p.completion_year;
   const ceiling = p.ceiling_height
