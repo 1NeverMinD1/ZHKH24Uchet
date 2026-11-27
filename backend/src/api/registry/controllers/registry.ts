@@ -12,6 +12,11 @@ const fail = (ctx: any, status: number, code: string) => {
 const pageOf = (value: unknown) =>
   Math.max(1, parseInt(String(value || "1"), 10) || 1);
 
+const byAddress = (a: any, b: any) =>
+  String(a.address || "").localeCompare(String(b.address || ""), "ru", {
+    numeric: true,
+  });
+
 const STOP_WORDS = new Set([
   "ул",
   "улица",
@@ -506,6 +511,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
           )
         : [];
 
+      neighbors.sort(byAddress);
       const { id, ...data } = house;
       ctx.body = {
         house: data,
@@ -661,6 +667,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
         [complex.id],
       );
 
+      houses.sort(byAddress);
       const { id, ...data } = complex;
       ctx.body = { complex: data, houses };
     },
