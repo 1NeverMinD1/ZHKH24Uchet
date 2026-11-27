@@ -4,6 +4,19 @@ export const registryMessages = {
     "registry.nav.houses": "Дома",
     "registry.nav.complexes": "ЖК",
 
+    "registry.footer.registry": "Реестр",
+    "registry.footer.complexes": "Жилые комплексы",
+    "registry.footer.types": "Субъекты",
+    "registry.footer.project": "Проект",
+    "registry.footer.bindex": "Bindex — все компании",
+    "registry.footer.zhkh24": "Новости ЖКХ24",
+    "registry.footer.login": "Войти через ЭЦП",
+    "registry.footer.intro":
+      "Реестр ОСИ, КСК, управляющих и сервисных компаний Казахстана: кто обслуживает дома сейчас и кто обслуживал раньше.",
+    "registry.footer.rights": "© 2026 Реестр ЖКХ — Все права защищены",
+    "registry.footer.basedOn":
+      "Данные основаны на реестре юридических лиц Бюро национальной статистики",
+
     "registry.type.osi": "ОСИ",
     "registry.type.ksk": "КСК",
     "registry.type.uk": "УК",
@@ -113,6 +126,19 @@ export const registryMessages = {
     "registry.nav.companies": "Компаниялар",
     "registry.nav.houses": "Үйлер",
     "registry.nav.complexes": "ТК",
+
+    "registry.footer.registry": "Тізілім",
+    "registry.footer.complexes": "Тұрғын кешендер",
+    "registry.footer.types": "Субъектілер",
+    "registry.footer.project": "Жоба",
+    "registry.footer.bindex": "Bindex — барлық компаниялар",
+    "registry.footer.zhkh24": "ЖКХ24 жаңалықтары",
+    "registry.footer.login": "ЭЦҚ арқылы кіру",
+    "registry.footer.intro":
+      "Қазақстандағы МИБ, ПИК, басқарушы және сервистік компаниялар тізілімі: үйлерге қазір кім қызмет көрсетеді және бұрын кім көрсеткен.",
+    "registry.footer.rights": "© 2026 ТКШ тізілімі — Барлық құқықтар қорғалған",
+    "registry.footer.basedOn":
+      "Деректер Ұлттық статистика бюросының заңды тұлғалар тізіліміне негізделген",
 
     "registry.type.osi": "МИБ",
     "registry.type.ksk": "ПИК",
