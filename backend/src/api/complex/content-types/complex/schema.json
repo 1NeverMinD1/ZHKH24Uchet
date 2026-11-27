@@ -20,6 +20,7 @@
     "latitude": { "type": "float" },
     "longitude": { "type": "float" },
     "developer": { "type": "string" },
+    "developer_bin": { "type": "string" },
     "build_status": { "type": "string" },
     "completion_year": { "type": "integer" },
     "completion_text": { "type": "string" },

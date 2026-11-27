@@ -86,6 +86,7 @@ const CURRENT_HOUSES_OF_COMPANY = `
 const COMPLEX_PASSPORT = `
   case when cx.krisha_id is not null then json_build_object(
     'developer', cx.developer, 'build_status', cx.build_status,
+    'developer_slug', (select co.slug from companies co where co.bin = cx.developer_bin limit 1),
     'completion_year', cx.completion_year, 'completion_text', cx.completion_text,
     'housing_class', cx.housing_class, 'floors_min', cx.floors_min, 'floors_max', cx.floors_max,
     'ceiling_height', cx.ceiling_height, 'wall_type', cx.wall_type, 'finishing', cx.finishing,

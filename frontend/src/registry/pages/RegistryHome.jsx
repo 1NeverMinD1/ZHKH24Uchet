@@ -75,7 +75,7 @@ export default function RegistryHome() {
 
         <h2 className="rg__subtitle">{t("registry.home.subjects")}</h2>
         <div className="rg__tiles">
-          {TYPES.map((type) => (
+          {TYPES.filter((type) => counts[type] !== 0).map((type) => (
             <Link
               key={type}
               to={`/companies?type=${type}`}

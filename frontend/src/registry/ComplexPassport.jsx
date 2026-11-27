@@ -1,4 +1,5 @@
 import { useLocale } from "../i18n/context";
+import { BINDEX_URL } from "./format";
 
 const KK = {
   монолитный: "монолитті",
@@ -66,7 +67,20 @@ export default function ComplexPassport({ passport }) {
     : null;
 
   const facts = [
-    ["developer", p.developer],
+    [
+      "developer",
+      p.developer && p.developer_slug ? (
+        <a
+          href={`${BINDEX_URL}/${locale}/company/${p.developer_slug}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {p.developer}
+        </a>
+      ) : (
+        p.developer
+      ),
+    ],
     [
       "status",
       p.build_status && t(`registry.passport.status.${p.build_status}`),
