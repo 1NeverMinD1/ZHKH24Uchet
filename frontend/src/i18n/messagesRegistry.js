@@ -143,7 +143,7 @@ export const registryMessages = {
     "registry.event.houseEnd": "Окончание обслуживания дома",
 
     "registry.house.seoTitle": "{address} — кто обслуживает дом",
-    "registry.house.units": "Помещений",
+    "registry.house.units": "Помещений с компаниями",
     "registry.house.apartments": "Квартир",
     "registry.house.floors": "Этажей",
     "registry.house.year": "Год постройки",
@@ -325,7 +325,7 @@ export const registryMessages = {
     "registry.event.houseEnd": "Үйге қызмет көрсетудің аяқталуы",
 
     "registry.house.seoTitle": "{address} — үйге кім қызмет көрсетеді",
-    "registry.house.units": "Үй-жайлар",
+    "registry.house.units": "Компаниялары бар үй-жайлар",
     "registry.house.apartments": "Пәтерлер",
     "registry.house.floors": "Қабаттар",
     "registry.house.year": "Салынған жылы",

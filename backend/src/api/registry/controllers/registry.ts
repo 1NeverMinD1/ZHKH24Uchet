@@ -351,7 +351,11 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
                 h.latitude, h.longitude,
                 zhkh_city(t.id, 'ru') as city_ru, zhkh_city(t.id, 'kk') as city_kk, zhkh_place(t.id, 'ru', 'district') as district_ru, zhkh_place(t.id, 'kk', 'district') as district_kk, t.path_ru, t.path_kk,
                 cx.name as complex_name, cx.slug as complex_slug,
-                (select count(*)::int from units u where u.address_id = h.address_id) as units
+                (select count(distinct cp.unit_id)::int
+                 from company_periods cp
+                 where cp.address_id = h.address_id
+                   and cp.unit_id is not null
+                   and cp.to_on = (select max(to_on) from company_periods)) as units
          from houses h
          left join addresses a on a.id = h.address_id
          left join territories t on t.id = a.territory_id
