@@ -12,9 +12,44 @@ const fail = (ctx: any, status: number, code: string) => {
 const pageOf = (value: unknown) =>
   Math.max(1, parseInt(String(value || "1"), 10) || 1);
 
+const STOP_WORDS = new Set([
+  "ул",
+  "улица",
+  "пр",
+  "пр-т",
+  "проспект",
+  "д",
+  "дом",
+  "мкр",
+  "микрорайон",
+  "кв",
+  "г",
+  "город",
+  "р-н",
+  "район",
+  "жк",
+  "оси",
+  "кск",
+]);
+
+const searchPatterns = (q: string) =>
+  q
+    .toLowerCase()
+    .replace(/[«»"'.,()]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w && !STOP_WORDS.has(w))
+    .slice(0, 6)
+    .map((w) =>
+      /^[a-zа-яёәғқңөұүһі]+$/i.test(w) && w.length >= 6 ? w.slice(0, -2) : w,
+    )
+    .map((w) => `%${w.replace(/[\\%_]/g, "\\$&")}%`);
+
 const CITY_BY_KATO = `
   zhkh_city((select t.id from territories t where t.kato = c.kato order by t.level desc limit 1), 'ru') as city_ru,
   zhkh_city((select t.id from territories t where t.kato = c.kato order by t.level desc limit 1), 'kk') as city_kk`;
+
+const PLACE_COLUMNS = `zhkh_city(t.id, 'ru') as city_ru, zhkh_city(t.id, 'kk') as city_kk,
+  zhkh_place(t.id, 'ru', 'district') as district_ru, zhkh_place(t.id, 'kk', 'district') as district_kk`;
 
 const CURRENT_COUNTS = `
   select cl.company_id,
@@ -36,6 +71,12 @@ const CURRENT_MANAGER = `
    order by m.started_at desc
    limit 1) as manager`;
 
+const CURRENT_HOUSES_OF_COMPANY = `
+  from house_managements_company_lnk cc
+  join house_managements mc on mc.id = cc.house_management_id and mc.ended_at is null
+  join house_managements_house_lnk hc on hc.house_management_id = mc.id
+  join houses hh on hh.id = hc.house_id`;
+
 export default ({ strapi }: { strapi: Core.Strapi }) => {
   const rows = async (sql: string, params: any[] = []) => {
     const result: any = await strapi.db.connection.raw(sql, params);
@@ -52,7 +93,10 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
         ? ctx.query.houses
         : "";
       const city = String(ctx.query.city || "").trim();
-      const sort = ctx.query.sort === "name" ? "name" : "houses";
+      const district = String(ctx.query.district || "").trim();
+      const sort = ["name", "newest", "oldest"].includes(ctx.query.sort)
+        ? ctx.query.sort
+        : "houses";
       const q = String(ctx.query.q || "").trim();
       const page = pageOf(ctx.query.page);
       const where = ["c.zhkh_registry = true"];
@@ -68,28 +112,37 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
           where.push("c.bin like ?");
           params.push(`${q}%`);
         } else {
-          where.push("(c.name_ru ilike ? or c.name_kk ilike ?)");
-          params.push(`%${q}%`, `%${q}%`);
+          for (const pattern of searchPatterns(q)) {
+            where.push("(c.name_ru ilike ? or c.name_kk ilike ?)");
+            params.push(pattern, pattern);
+          }
         }
       }
       if (housesFilter === "yes") where.push("coalesce(n.current, 0) > 0");
       if (housesFilter === "no") where.push("coalesce(n.current, 0) = 0");
       if (city) {
-        where.push(`exists (
-          select 1
-          from house_managements_company_lnk cc
-          join house_managements mc on mc.id = cc.house_management_id and mc.ended_at is null
-          join house_managements_house_lnk hc on hc.house_management_id = mc.id
-          join houses hh on hh.id = hc.house_id
-          where cc.company_id = c.id and hh.city = ?)`);
+        where.push(
+          `exists (select 1 ${CURRENT_HOUSES_OF_COMPANY} where cc.company_id = c.id and hh.city = ?)`,
+        );
         params.push(city);
+      }
+      if (district) {
+        where.push(
+          `exists (select 1 ${CURRENT_HOUSES_OF_COMPANY} where cc.company_id = c.id and hh.district = ?)`,
+        );
+        params.push(district);
       }
       const whereSql = where.join(" and ");
       const fromSql = `from companies c left join (${CURRENT_COUNTS}) n on n.company_id = c.id`;
+      const byName = "coalesce(c.sort_name, c.name_ru)";
       const orderSql =
         sort === "name"
-          ? "coalesce(c.sort_name, c.name_ru)"
-          : "coalesce(n.current, 0) desc, coalesce(c.sort_name, c.name_ru)";
+          ? byName
+          : sort === "newest"
+            ? `c.registration_date desc nulls last, ${byName}`
+            : sort === "oldest"
+              ? `c.registration_date asc nulls last, ${byName}`
+              : `coalesce(n.current, 0) desc, ${byName}`;
       const [{ total }] = await rows(
         `select count(*)::int as total ${fromSql} where ${whereSql}`,
         params,
@@ -107,16 +160,24 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       );
       const cities = await rows(
         `select hh.city, count(distinct cc.company_id)::int as count
-         from house_managements_company_lnk cc
-         join house_managements mc on mc.id = cc.house_management_id and mc.ended_at is null
-         join house_managements_house_lnk hc on hc.house_management_id = mc.id
-         join houses hh on hh.id = hc.house_id
+         ${CURRENT_HOUSES_OF_COMPANY}
          join companies c2 on c2.id = cc.company_id and c2.zhkh_registry = true
          where coalesce(hh.city, '') <> ''
          group by hh.city
          order by count(distinct cc.company_id) desc, hh.city`,
       );
-      ctx.body = { items, total, page, pageSize: PAGE_SIZE, cities };
+      const districts = city
+        ? await rows(
+            `select hh.district, count(distinct cc.company_id)::int as count
+             ${CURRENT_HOUSES_OF_COMPANY}
+             join companies c2 on c2.id = cc.company_id and c2.zhkh_registry = true
+             where hh.city = ? and coalesce(hh.district, '') <> ''
+             group by hh.district
+             order by count(distinct cc.company_id) desc, hh.district`,
+            [city],
+          )
+        : [];
+      ctx.body = { items, total, page, pageSize: PAGE_SIZE, cities, districts };
     },
 
     async company(ctx: any) {
@@ -137,9 +198,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
         `select h.address_id, h.address, h.apartments, m.role, m.service_kind,
                 to_char(m.started_at, 'YYYY-MM-DD') as started_at,
                 to_char(m.ended_at, 'YYYY-MM-DD') as ended_at,
-                zhkh_city(t.id, 'ru') as city_ru, zhkh_city(t.id, 'kk') as city_kk,
-                zhkh_place(t.id, 'ru', 'district') as district_ru,
-                zhkh_place(t.id, 'kk', 'district') as district_kk,
+                ${PLACE_COLUMNS},
                 cx.name as complex_name, cx.slug as complex_slug
          from house_managements m
          join house_managements_company_lnk cl on cl.house_management_id = m.id
@@ -286,10 +345,12 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
     async houses(ctx: any) {
       const q = String(ctx.query.q || "").trim();
       const city = String(ctx.query.city || "").trim();
+      const district = String(ctx.query.district || "").trim();
       const managed = ["yes", "no"].includes(ctx.query.managed)
         ? ctx.query.managed
         : "";
       const inComplex = ctx.query.complex === "1";
+      const sort = ctx.query.sort === "recent" ? "recent" : "address";
       const page = pageOf(ctx.query.page);
       const where: string[] = [];
       const params: any[] = [];
@@ -298,13 +359,17 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
         from house_managements_house_lnk hm
         join house_managements mm on mm.id = hm.house_management_id and mm.ended_at is null
         where hm.house_id = h.id)`;
-      if (q) {
+      for (const pattern of q ? searchPatterns(q) : []) {
         where.push("h.address ilike ?");
-        params.push(`%${q}%`);
+        params.push(pattern);
       }
       if (city) {
         where.push("h.city = ?");
         params.push(city);
+      }
+      if (district) {
+        where.push("h.district = ?");
+        params.push(district);
       }
       if (managed === "yes") where.push(hasManager);
       if (managed === "no") where.push(`not ${hasManager}`);
@@ -314,13 +379,20 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
         );
       }
       const whereSql = where.length ? `where ${where.join(" and ")}` : "";
+      const orderSql =
+        sort === "recent"
+          ? `(select max(greatest(mm.started_at, coalesce(mm.ended_at, mm.started_at)))
+              from house_managements_house_lnk hm
+              join house_managements mm on mm.id = hm.house_management_id
+              where hm.house_id = h.id) desc nulls last, h.address`
+          : "h.address";
       const [{ total }] = await rows(
         `select count(*)::int as total from houses h ${whereSql}`,
         params,
       );
       const items = await rows(
         `select h.address_id, h.address, h.apartments,
-                ${"zhkh_city(t.id, 'ru') as city_ru, zhkh_city(t.id, 'kk') as city_kk, zhkh_place(t.id, 'ru', 'district') as district_ru, zhkh_place(t.id, 'kk', 'district') as district_kk"},
+                ${PLACE_COLUMNS},
                 cx.name as complex_name, cx.slug as complex_slug,
                 ${CURRENT_MANAGER}
          from houses h
@@ -329,7 +401,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
          left join houses_complex_lnk xl on xl.house_id = h.id
          left join complexes cx on cx.id = xl.complex_id
          ${whereSql}
-         order by h.address
+         order by ${orderSql}
          limit ? offset ?`,
         [...params, PAGE_SIZE, (page - 1) * PAGE_SIZE],
       );
@@ -340,7 +412,17 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
          group by city
          order by count(*) desc, city`,
       );
-      ctx.body = { items, total, page, pageSize: PAGE_SIZE, cities };
+      const districts = city
+        ? await rows(
+            `select district, count(*)::int as count
+             from houses
+             where city = ? and coalesce(district, '') <> ''
+             group by district
+             order by count(*) desc, district`,
+            [city],
+          )
+        : [];
+      ctx.body = { items, total, page, pageSize: PAGE_SIZE, cities, districts };
     },
 
     async house(ctx: any) {
@@ -349,7 +431,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       const [house] = await rows(
         `select h.id, h.address_id, h.address, h.apartments, h.floors, h.year_built,
                 h.latitude, h.longitude,
-                zhkh_city(t.id, 'ru') as city_ru, zhkh_city(t.id, 'kk') as city_kk, zhkh_place(t.id, 'ru', 'district') as district_ru, zhkh_place(t.id, 'kk', 'district') as district_kk, t.path_ru, t.path_kk,
+                ${PLACE_COLUMNS}, t.path_ru, t.path_kk,
                 cx.name as complex_name, cx.slug as complex_slug,
                 (select count(distinct cp.bin)::int
                  from company_periods cp
@@ -427,17 +509,25 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
     async complexes(ctx: any) {
       const q = String(ctx.query.q || "").trim();
       const city = String(ctx.query.city || "").trim();
+      const district = String(ctx.query.district || "").trim();
       const multi = ctx.query.multi === "1";
       const page = pageOf(ctx.query.page);
       const where: string[] = [];
       const params: any[] = [];
-      if (q) {
+      for (const pattern of q ? searchPatterns(q) : []) {
         where.push("(cx.name ilike ? or cx.city ilike ?)");
-        params.push(`%${q}%`, `%${q}%`);
+        params.push(pattern, pattern);
       }
       if (city) {
         where.push("cx.city = ?");
         params.push(city);
+      }
+      if (district) {
+        where.push(`exists (
+          select 1 from houses_complex_lnk xd
+          join houses hd on hd.id = xd.house_id
+          where xd.complex_id = cx.id and hd.district = ?)`);
+        params.push(district);
       }
       const whereSql = where.length ? `where ${where.join(" and ")}` : "";
       const havingSql = multi ? "having count(xl.house_id) >= 2" : "";
@@ -466,8 +556,21 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
          group by cx.city
          order by count(*) desc, cx.city`,
       );
-      ctx.body = { items, total, page, pageSize: PAGE_SIZE, cities };
+      const districts = city
+        ? await rows(
+            `select hd.district, count(distinct xd.complex_id)::int as count
+             from houses_complex_lnk xd
+             join houses hd on hd.id = xd.house_id
+             join complexes cx on cx.id = xd.complex_id
+             where cx.city = ? and coalesce(hd.district, '') <> ''
+             group by hd.district
+             order by count(distinct xd.complex_id) desc, hd.district`,
+            [city],
+          )
+        : [];
+      ctx.body = { items, total, page, pageSize: PAGE_SIZE, cities, districts };
     },
+
     async complex(ctx: any) {
       const slug = String(ctx.params.slug || "");
       const [complex] = await rows(
@@ -482,7 +585,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
 
       const houses = await rows(
         `select h.address_id, h.address, h.apartments, h.latitude, h.longitude,
-                zhkh_city(t.id, 'ru') as city_ru, zhkh_city(t.id, 'kk') as city_kk, zhkh_place(t.id, 'ru', 'district') as district_ru, zhkh_place(t.id, 'kk', 'district') as district_kk,
+                ${PLACE_COLUMNS},
                 ${CURRENT_MANAGER}
          from houses_complex_lnk xl
          join houses h on h.id = xl.house_id

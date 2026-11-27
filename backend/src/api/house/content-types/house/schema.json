@@ -15,6 +15,7 @@
     "slug": { "type": "uid", "targetField": "address" },
     "city": { "type": "string" },
     "kato": { "type": "string" },
+    "district": { "type": "string" },
     "address_id": { "type": "integer", "unique": true },
     "apartments": { "type": "integer" },
     "floors": { "type": "integer" },

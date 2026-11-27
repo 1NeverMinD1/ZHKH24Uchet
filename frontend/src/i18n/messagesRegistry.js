@@ -62,6 +62,11 @@ export const registryMessages = {
     "registry.companies.houses.no": "Без домов",
     "registry.companies.sort.houses": "Сначала больше домов",
     "registry.companies.sort.name": "По названию",
+    "registry.companies.sort.newest": "Сначала новые",
+    "registry.companies.sort.oldest": "Сначала старые",
+    "registry.allDistricts": "Все районы",
+    "registry.houses.sort.address": "По адресу",
+    "registry.houses.sort.recent": "Сначала недавние изменения",
     "registry.search": "Найти",
 
     "registry.notFound": "Не найдено",
@@ -300,6 +305,11 @@ export const registryMessages = {
     "registry.companies.houses.no": "Үйлері жоқ",
     "registry.companies.sort.houses": "Алдымен үйлері көптер",
     "registry.companies.sort.name": "Атауы бойынша",
+    "registry.companies.sort.newest": "Алдымен жаңалары",
+    "registry.companies.sort.oldest": "Алдымен ескілері",
+    "registry.allDistricts": "Барлық аудандар",
+    "registry.houses.sort.address": "Мекенжай бойынша",
+    "registry.houses.sort.recent": "Алдымен соңғы өзгерістер",
     "registry.search": "Іздеу",
 
     "registry.notFound": "Табылмады",

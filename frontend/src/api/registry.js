@@ -11,6 +11,7 @@ export const fetchRegistryCompanies = ({
   page,
   status,
   city,
+  district,
   houses,
   sort,
 } = {}) =>
@@ -19,29 +20,48 @@ export const fetchRegistryCompanies = ({
     q: q || undefined,
     status: status || undefined,
     city: city || undefined,
+    district: district || undefined,
     houses: houses || undefined,
     sort: sort || undefined,
     page: page || 1,
   });
+
 export const fetchRegistryCompany = (slug) =>
   get(`/registry/company/${encodeURIComponent(slug)}`);
 
-export const fetchRegistryHouses = ({ q, page, city, managed, complex } = {}) =>
+export const fetchRegistryHouses = ({
+  q,
+  page,
+  city,
+  district,
+  managed,
+  complex,
+  sort,
+} = {}) =>
   get("/registry/houses", {
     q: q || undefined,
     city: city || undefined,
+    district: district || undefined,
     managed: managed || undefined,
     complex: complex ? "1" : undefined,
+    sort: sort || undefined,
     page: page || 1,
   });
 
 export const fetchRegistryHouse = (addressId) =>
   get(`/registry/house/${encodeURIComponent(addressId)}`);
 
-export const fetchRegistryComplexes = ({ q, page, city, multi } = {}) =>
+export const fetchRegistryComplexes = ({
+  q,
+  page,
+  city,
+  district,
+  multi,
+} = {}) =>
   get("/registry/complexes", {
     q: q || undefined,
     city: city || undefined,
+    district: district || undefined,
     multi: multi ? "1" : undefined,
     page: page || 1,
   });

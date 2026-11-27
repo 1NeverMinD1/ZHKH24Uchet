@@ -1,70 +1,23 @@
-import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useState } from "react";
 import SEO from "../../components/seo/SEO";
 import { Link } from "../../i18n/router";
 import { useLocale } from "../../i18n/context";
 import { fetchRegistryCompanies } from "../../api/registry";
 import { TYPES, nameOf, cityOf, formatNumber } from "../format";
+import useRegistryList from "../useRegistryList";
+import { Pager, PlaceFilters } from "../ListParts";
 
+const KEYS = ["type", "status", "houses", "sort", "city", "district", "q"];
+const DEFAULTS = { status: "active", sort: "houses" };
 const STATUSES = ["active", "gone", "all"];
 const HOUSES = ["", "yes", "no"];
-const SORTS = ["houses", "name"];
-
-const pick = (value, list, fallback) =>
-  list.includes(value) ? value : fallback;
+const SORTS = ["houses", "name", "newest", "oldest"];
 
 export default function RegistryCompanies() {
   const { locale, t } = useLocale();
-  const [params, setParams] = useSearchParams();
-  const type = pick(params.get("type"), TYPES, "");
-  const status = pick(params.get("status"), STATUSES, "active");
-  const houses = pick(params.get("houses") || "", HOUSES, "");
-  const sort = pick(params.get("sort"), SORTS, "houses");
-  const city = params.get("city") || "";
-  const q = params.get("q") || "";
-  const page = Math.max(1, parseInt(params.get("page") || "1", 10) || 1);
-  const key = [type, status, houses, sort, city, q, page].join("|");
-
-  const [input, setInput] = useState(q);
-  const [cities, setCities] = useState([]);
-  const [result, setResult] = useState({
-    key: null,
-    data: null,
-    failed: false,
-  });
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchRegistryCompanies({ type, q, page, status, city, houses, sort })
-      .then((data) => {
-        if (cancelled) return;
-        setResult({ key, data, failed: false });
-        if (Array.isArray(data.cities)) setCities(data.cities);
-      })
-      .catch(() => {
-        if (!cancelled) setResult({ key, data: null, failed: true });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [key, type, q, page, status, city, houses, sort]);
-
-  const loading = result.key !== key;
-  const data = loading ? null : result.data;
-  const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
-
-  const update = (next) => {
-    const merged = { type, status, houses, sort, city, q, page: 1, ...next };
-    const out = {};
-    if (merged.type) out.type = merged.type;
-    if (merged.status && merged.status !== "active") out.status = merged.status;
-    if (merged.houses) out.houses = merged.houses;
-    if (merged.sort && merged.sort !== "houses") out.sort = merged.sort;
-    if (merged.city) out.city = merged.city;
-    if (merged.q) out.q = merged.q;
-    if (merged.page > 1) out.page = String(merged.page);
-    setParams(out);
-  };
+  const list = useRegistryList(KEYS, DEFAULTS, fetchRegistryCompanies);
+  const { values, data, update } = list;
+  const [input, setInput] = useState(values.q);
 
   return (
     <section className="rg">
@@ -94,7 +47,7 @@ export default function RegistryCompanies() {
         <div className="rg__tabs">
           <button
             type="button"
-            className={`rg__tab${type === "" ? " rg__tab--active" : ""}`}
+            className={`rg__tab${values.type === "" ? " rg__tab--active" : ""}`}
             onClick={() => update({ type: "" })}
           >
             {t("registry.all")}
@@ -103,7 +56,7 @@ export default function RegistryCompanies() {
             <button
               key={item}
               type="button"
-              className={`rg__tab${type === item ? " rg__tab--active" : ""}`}
+              className={`rg__tab${values.type === item ? " rg__tab--active" : ""}`}
               onClick={() => update({ type: item })}
             >
               {t(`registry.typePlural.${item}`)}
@@ -112,22 +65,17 @@ export default function RegistryCompanies() {
         </div>
 
         <div className="rg__filters">
+          <PlaceFilters
+            values={values}
+            cities={list.cities}
+            districts={list.districts}
+            update={update}
+            t={t}
+            allCitiesKey="registry.companies.allCities"
+          />
           <select
             className="rg__select"
-            value={city}
-            onChange={(e) => update({ city: e.target.value })}
-          >
-            <option value="">{t("registry.companies.allCities")}</option>
-            {cities.map((item) => (
-              <option key={item.city} value={item.city}>
-                {item.city} ({formatNumber(item.count)})
-              </option>
-            ))}
-          </select>
-
-          <select
-            className="rg__select"
-            value={status}
+            value={values.status}
             onChange={(e) => update({ status: e.target.value })}
           >
             {STATUSES.map((item) => (
@@ -136,10 +84,9 @@ export default function RegistryCompanies() {
               </option>
             ))}
           </select>
-
           <select
             className="rg__select"
-            value={houses}
+            value={values.houses}
             onChange={(e) => update({ houses: e.target.value })}
           >
             {HOUSES.map((item) => (
@@ -148,10 +95,9 @@ export default function RegistryCompanies() {
               </option>
             ))}
           </select>
-
           <select
             className="rg__select"
-            value={sort}
+            value={values.sort}
             onChange={(e) => update({ sort: e.target.value })}
           >
             {SORTS.map((item) => (
@@ -162,10 +108,8 @@ export default function RegistryCompanies() {
           </select>
         </div>
 
-        {loading && <p className="rg__status">{t("common.loading")}</p>}
-        {!loading && result.failed && (
-          <p className="rg__status">{t("registry.loadError")}</p>
-        )}
+        {list.loading && <p className="rg__status">{t("common.loading")}</p>}
+        {list.failed && <p className="rg__status">{t("registry.loadError")}</p>}
 
         {data && (
           <>
@@ -226,27 +170,7 @@ export default function RegistryCompanies() {
               </div>
             )}
 
-            {pages > 1 && (
-              <div className="rg__pager">
-                <button
-                  type="button"
-                  className="rg__button rg__button--ghost"
-                  disabled={page <= 1}
-                  onClick={() => update({ page: page - 1 })}
-                >
-                  {t("registry.prev")}
-                </button>
-                <span>{t("registry.page", { page, pages })}</span>
-                <button
-                  type="button"
-                  className="rg__button rg__button--ghost"
-                  disabled={page >= pages}
-                  onClick={() => update({ page: page + 1 })}
-                >
-                  {t("registry.next")}
-                </button>
-              </div>
-            )}
+            <Pager page={list.page} pages={list.pages} update={update} t={t} />
           </>
         )}
       </div>

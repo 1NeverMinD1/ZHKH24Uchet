@@ -1,62 +1,22 @@
-import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useState } from "react";
 import SEO from "../../components/seo/SEO";
 import { Link } from "../../i18n/router";
 import { useLocale } from "../../i18n/context";
 import { fetchRegistryHouses } from "../../api/registry";
 import { nameOf, placeOf, formatNumber } from "../format";
+import useRegistryList from "../useRegistryList";
+import { Pager, PlaceFilters } from "../ListParts";
 
+const KEYS = ["q", "city", "district", "managed", "complex", "sort"];
+const DEFAULTS = { sort: "address" };
 const MANAGED = ["", "yes", "no"];
+const SORTS = ["address", "recent"];
 
 export default function RegistryHouses() {
   const { locale, t } = useLocale();
-  const [params, setParams] = useSearchParams();
-  const q = params.get("q") || "";
-  const city = params.get("city") || "";
-  const rawManaged = params.get("managed") || "";
-  const managed = MANAGED.includes(rawManaged) ? rawManaged : "";
-  const complex = params.get("complex") === "1";
-  const page = Math.max(1, parseInt(params.get("page") || "1", 10) || 1);
-  const key = `${q}|${city}|${managed}|${complex}|${page}`;
-
-  const [input, setInput] = useState(q);
-  const [cities, setCities] = useState([]);
-  const [result, setResult] = useState({
-    key: null,
-    data: null,
-    failed: false,
-  });
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchRegistryHouses({ q, city, managed, complex, page })
-      .then((data) => {
-        if (cancelled) return;
-        setResult({ key, data, failed: false });
-        if (Array.isArray(data.cities)) setCities(data.cities);
-      })
-      .catch(() => {
-        if (!cancelled) setResult({ key, data: null, failed: true });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [key, q, city, managed, complex, page]);
-
-  const loading = result.key !== key;
-  const data = loading ? null : result.data;
-  const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
-
-  const update = (next) => {
-    const merged = { q, city, managed, complex, page: 1, ...next };
-    const out = {};
-    if (merged.q) out.q = merged.q;
-    if (merged.city) out.city = merged.city;
-    if (merged.managed) out.managed = merged.managed;
-    if (merged.complex) out.complex = "1";
-    if (merged.page > 1) out.page = String(merged.page);
-    setParams(out);
-  };
+  const list = useRegistryList(KEYS, DEFAULTS, fetchRegistryHouses);
+  const { values, data, update } = list;
+  const [input, setInput] = useState(values.q);
 
   return (
     <section className="rg">
@@ -84,22 +44,17 @@ export default function RegistryHouses() {
         </form>
 
         <div className="rg__filters">
+          <PlaceFilters
+            values={values}
+            cities={list.cities}
+            districts={list.districts}
+            update={update}
+            t={t}
+            allCitiesKey="registry.houses.allCities"
+          />
           <select
             className="rg__select"
-            value={city}
-            onChange={(e) => update({ city: e.target.value })}
-          >
-            <option value="">{t("registry.houses.allCities")}</option>
-            {cities.map((item) => (
-              <option key={item.city} value={item.city}>
-                {item.city} ({formatNumber(item.count)})
-              </option>
-            ))}
-          </select>
-
-          <select
-            className="rg__select"
-            value={managed}
+            value={values.managed}
             onChange={(e) => update({ managed: e.target.value })}
           >
             {MANAGED.map((item) => (
@@ -108,21 +63,29 @@ export default function RegistryHouses() {
               </option>
             ))}
           </select>
-
+          <select
+            className="rg__select"
+            value={values.sort}
+            onChange={(e) => update({ sort: e.target.value })}
+          >
+            {SORTS.map((item) => (
+              <option key={item} value={item}>
+                {t(`registry.houses.sort.${item}`)}
+              </option>
+            ))}
+          </select>
           <label className="rg__check">
             <input
               type="checkbox"
-              checked={complex}
-              onChange={(e) => update({ complex: e.target.checked })}
+              checked={values.complex === "1"}
+              onChange={(e) => update({ complex: e.target.checked ? "1" : "" })}
             />
             {t("registry.houses.inComplex")}
           </label>
         </div>
 
-        {loading && <p className="rg__status">{t("common.loading")}</p>}
-        {!loading && result.failed && (
-          <p className="rg__status">{t("registry.loadError")}</p>
-        )}
+        {list.loading && <p className="rg__status">{t("common.loading")}</p>}
+        {list.failed && <p className="rg__status">{t("registry.loadError")}</p>}
 
         {data && (
           <>
@@ -174,27 +137,7 @@ export default function RegistryHouses() {
               </div>
             )}
 
-            {pages > 1 && (
-              <div className="rg__pager">
-                <button
-                  type="button"
-                  className="rg__button rg__button--ghost"
-                  disabled={page <= 1}
-                  onClick={() => update({ page: page - 1 })}
-                >
-                  {t("registry.prev")}
-                </button>
-                <span>{t("registry.page", { page, pages })}</span>
-                <button
-                  type="button"
-                  className="rg__button rg__button--ghost"
-                  disabled={page >= pages}
-                  onClick={() => update({ page: page + 1 })}
-                >
-                  {t("registry.next")}
-                </button>
-              </div>
-            )}
+            <Pager page={list.page} pages={list.pages} update={update} t={t} />
           </>
         )}
       </div>
