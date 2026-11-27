@@ -521,12 +521,32 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       const city = String(ctx.query.city || "").trim();
       const district = String(ctx.query.district || "").trim();
       const multi = ctx.query.multi === "1";
+      const buildStatus = ["built", "building"].includes(ctx.query.status)
+        ? ctx.query.status
+        : "";
+      const housingClass = [
+        "эконом",
+        "комфорт",
+        "бизнес",
+        "элит",
+        "премиум",
+      ].includes(ctx.query.cls)
+        ? ctx.query.cls
+        : "";
+      const year = /^\d{4}$/.test(String(ctx.query.year || ""))
+        ? parseInt(ctx.query.year, 10)
+        : null;
+      const sort = ["year", "name"].includes(ctx.query.sort)
+        ? ctx.query.sort
+        : "houses";
       const page = pageOf(ctx.query.page);
       const where: string[] = [];
       const params: any[] = [];
       for (const pattern of q ? searchPatterns(q) : []) {
-        where.push("(cx.name ilike ? or cx.city ilike ?)");
-        params.push(pattern, pattern);
+        where.push(
+          "(cx.name ilike ? or cx.city ilike ? or cx.developer ilike ?)",
+        );
+        params.push(pattern, pattern, pattern);
       }
       if (city) {
         where.push("cx.city = ?");
@@ -539,8 +559,26 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
           where xd.complex_id = cx.id and hd.district = ?)`);
         params.push(district);
       }
+      if (buildStatus) {
+        where.push("cx.build_status = ?");
+        params.push(buildStatus);
+      }
+      if (housingClass) {
+        where.push("cx.housing_class = ?");
+        params.push(housingClass);
+      }
+      if (year) {
+        where.push("cx.completion_year = ?");
+        params.push(year);
+      }
       const whereSql = where.length ? `where ${where.join(" and ")}` : "";
       const havingSql = multi ? "having count(xl.house_id) >= 2" : "";
+      const orderSql =
+        sort === "year"
+          ? "b.completion_year desc nulls last, b.name"
+          : sort === "name"
+            ? "b.name"
+            : "b.houses desc, b.name";
       const base = `
         select cx.name, cx.slug, cx.city, cx.apartments,
                cx.developer, cx.build_status, cx.completion_year, cx.housing_class,
@@ -556,7 +594,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       );
       const items = await rows(
         `select * from (${base}) b
-         order by b.houses desc, b.name
+         order by ${orderSql}
          limit ? offset ?`,
         [...params, PAGE_SIZE, (page - 1) * PAGE_SIZE],
       );
@@ -579,7 +617,22 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
             [city],
           )
         : [];
-      ctx.body = { items, total, page, pageSize: PAGE_SIZE, cities, districts };
+      const years = await rows(
+        `select completion_year as year, count(*)::int as count
+         from complexes
+         where completion_year is not null
+         group by completion_year
+         order by completion_year desc`,
+      );
+      ctx.body = {
+        items,
+        total,
+        page,
+        pageSize: PAGE_SIZE,
+        cities,
+        districts,
+        years,
+      };
     },
 
     async complex(ctx: any) {
