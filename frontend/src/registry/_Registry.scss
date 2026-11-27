@@ -585,7 +585,13 @@
     display: flex;
     gap: 4px;
     overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
     border-bottom: 1px solid #dce3ea;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 
   &__ptab {
