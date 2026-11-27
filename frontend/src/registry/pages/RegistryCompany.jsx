@@ -199,6 +199,17 @@ export default function RegistryCompany() {
     return `${from || "—"} → ${to || "—"}`;
   };
 
+  const addressMonths = new Set(
+    events.filter((e) => e.type === "address").map((e) => e.date.slice(0, 7)),
+  );
+  const nextMonth = (value) => {
+    const d = new Date(`${value.slice(0, 7)}-01T00:00:00Z`);
+    d.setUTCMonth(d.getUTCMonth() + 1);
+    return d.toISOString().slice(0, 7);
+  };
+  const isAddressMove = (date, shift) =>
+    addressMonths.has(shift ? nextMonth(date) : date.slice(0, 7));
+
   const timeline = [
     ...(company.registration_date
       ? [
@@ -216,7 +227,12 @@ export default function RegistryCompany() {
       detail: eventDetail(e),
     })),
     ...houses
-      .filter((h) => h.started_at && h.started_at > EARLY)
+      .filter(
+        (h) =>
+          h.started_at &&
+          h.started_at > EARLY &&
+          !isAddressMove(h.started_at, false),
+      )
       .map((h) => ({
         key: `hs${h.address_id}${h.started_at}`,
         date: h.started_at,
@@ -225,7 +241,7 @@ export default function RegistryCompany() {
         to: `/house/${h.address_id}`,
       })),
     ...houses
-      .filter((h) => h.ended_at)
+      .filter((h) => h.ended_at && !isAddressMove(h.ended_at, true))
       .map((h) => ({
         key: `he${h.address_id}${h.ended_at}`,
         date: h.ended_at,
