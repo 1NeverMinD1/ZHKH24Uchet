@@ -1,6 +1,7 @@
 import type { Core } from "@strapi/strapi";
 
 const PAGE_SIZE = 20;
+const DIRECTORS_SINCE = "2023-08-01";
 const TYPES = ["osi", "ksk", "uk", "service"];
 
 const fail = (ctx: any, status: number, code: string) => {
@@ -136,7 +137,9 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
         `select h.address_id, h.address, h.apartments, m.role, m.service_kind,
                 to_char(m.started_at, 'YYYY-MM-DD') as started_at,
                 to_char(m.ended_at, 'YYYY-MM-DD') as ended_at,
-                zhkh_city(t.id, 'ru') as city_ru, zhkh_city(t.id, 'kk') as city_kk, zhkh_place(t.id, 'ru', 'district') as district_ru, zhkh_place(t.id, 'kk', 'district') as district_kk,
+                zhkh_city(t.id, 'ru') as city_ru, zhkh_city(t.id, 'kk') as city_kk,
+                zhkh_place(t.id, 'ru', 'district') as district_ru,
+                zhkh_place(t.id, 'kk', 'district') as district_kk,
                 cx.name as complex_name, cx.slug as complex_slug
          from house_managements m
          join house_managements_company_lnk cl on cl.house_management_id = m.id
@@ -151,6 +154,114 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
         [company.id],
       );
 
+      const [{ last }] = await rows(
+        "select to_char(max(to_on), 'YYYY-MM-DD') as last from company_periods",
+      );
+
+      const periods = await rows(
+        `select to_char(cp.from_on, 'YYYY-MM-DD') as from_on,
+                to_char(cp.to_on, 'YYYY-MM-DD') as to_on,
+                cp.director_id, d.name as director_name,
+                cp.address_id, a.address,
+                n.name_ru, n.name_kk
+         from company_periods cp
+         left join directors d on d.id = cp.director_id
+         left join addresses a on a.id = cp.address_id
+         left join company_names n on n.id = cp.name_id
+         where cp.bin = ?
+         order by cp.from_on`,
+        [company.bin],
+      );
+
+      const events: any[] = [];
+      for (let i = 1; i < periods.length; i++) {
+        const prev = periods[i - 1];
+        const cur = periods[i];
+        const date = cur.from_on;
+        if (
+          cur.director_id &&
+          cur.director_id !== prev.director_id &&
+          date >= DIRECTORS_SINCE
+        ) {
+          events.push({
+            type: "director",
+            date,
+            from: prev.director_name,
+            to: cur.director_name,
+            directorId: cur.director_id,
+          });
+        }
+        if (cur.address_id && cur.address_id !== prev.address_id) {
+          events.push({
+            type: "address",
+            date,
+            from: prev.address,
+            to: cur.address,
+            addressId: cur.address_id,
+          });
+        }
+        if (prev.name_ru && cur.name_ru && cur.name_ru !== prev.name_ru) {
+          events.push({
+            type: "name",
+            date,
+            from: prev.name_ru,
+            to: cur.name_ru,
+            fromKk: prev.name_kk,
+            toKk: cur.name_kk,
+          });
+        }
+      }
+
+      const lastPeriod = periods[periods.length - 1];
+      if (company.status !== "active" && lastPeriod) {
+        events.push({ type: "gone", date: lastPeriod.to_on });
+      }
+
+      const yearAgo = new Date(`${last}T00:00:00Z`);
+      yearAgo.setUTCFullYear(yearAgo.getUTCFullYear() - 1);
+      const since12 = yearAgo.toISOString().slice(0, 10);
+      const countOf = (type: string, from = "") =>
+        events.filter((e) => e.type === type && e.date > from).length;
+
+      let director: any = null;
+      if (lastPeriod && lastPeriod.director_id) {
+        let i = periods.length - 1;
+        while (i > 0 && periods[i - 1].director_id === lastPeriod.director_id)
+          i--;
+        const since = periods[i].from_on;
+        const sinceEarly = since <= DIRECTORS_SINCE;
+        const current = lastPeriod.to_on === last;
+        const others = current
+          ? await rows(
+              `select c.bin, c.slug, c.name_ru, c.name_kk, c.zhkh_registry
+               from company_periods cp
+               join companies c on c.bin = cp.bin
+               where cp.director_id = ? and cp.to_on = ?::date and cp.bin <> ?
+               group by c.id
+               order by c.name_ru
+               limit 6`,
+              [lastPeriod.director_id, last, company.bin],
+            )
+          : [];
+        const [{ total }] = current
+          ? await rows(
+              `select count(distinct bin)::int as total
+               from company_periods
+               where director_id = ? and to_on = ?::date and bin <> ?`,
+              [lastPeriod.director_id, last, company.bin],
+            )
+          : [{ total: 0 }];
+        director = {
+          id: lastPeriod.director_id,
+          name: lastPeriod.director_name,
+          since: sinceEarly ? DIRECTORS_SINCE : since,
+          sinceEarly,
+          current,
+          others,
+          othersTotal: total,
+        };
+      }
+
       const { id, ...data } = company;
       ctx.body = {
         company: data,
@@ -159,6 +270,16 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
           current: houses.filter((x) => !x.ended_at).length,
           past: houses.filter((x) => x.ended_at).length,
         },
+        lastSnapshot: last,
+        events,
+        metrics: {
+          directorChanges: countOf("director"),
+          directorChanges12: countOf("director", since12),
+          addressChanges: countOf("address"),
+          addressChanges12: countOf("address", since12),
+          nameChanges: countOf("name"),
+        },
+        director,
       };
     },
 
