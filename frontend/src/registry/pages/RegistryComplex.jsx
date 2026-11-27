@@ -53,6 +53,13 @@ export default function RegistryComplex() {
       byRole[h.manager.role].add(h.manager.bin);
     });
 
+  const lat = complex.latitude;
+  const lon = complex.longitude;
+  const mapSrc =
+    lat && lon
+      ? `https://www.openstreetmap.org/export/embed.html?bbox=${lon - 0.007},${lat - 0.004},${lon + 0.007},${lat + 0.004}&layer=mapnik&marker=${lat},${lon}`
+      : null;
+
   const stats = [
     [t("registry.complex.houses"), houses.length || null],
     [t("registry.complex.apartments"), complex.apartments],
@@ -96,6 +103,28 @@ export default function RegistryComplex() {
           </div>
         )}
 
+        {mapSrc && (
+          <div className="rg__section">
+            <div className="rg__panel">
+              <h2 className="rg__panel-title">{t("registry.complex.map")}</h2>
+              <iframe
+                className="rg__map"
+                title={t("registry.complex.map")}
+                src={mapSrc}
+                loading="lazy"
+              />
+              <a
+                className="rg__ext"
+                href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=17/${lat}/${lon}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t("registry.complex.openMap")}
+              </a>
+            </div>
+          </div>
+        )}
+
         {houses.length > 0 && (
           <div className="rg__section">
             <h2 className="rg__subtitle">
@@ -126,7 +155,13 @@ export default function RegistryComplex() {
                           <span>{nameOf(h.manager, locale)}</span>
                         </>
                       ) : (
-                        <span>{t("registry.houses.noManager")}</span>
+                        <span>
+                          {t(
+                            h.has_managements
+                              ? "registry.houses.noManager"
+                              : "registry.houses.noData",
+                          )}
+                        </span>
                       )}
                     </span>
                   </div>

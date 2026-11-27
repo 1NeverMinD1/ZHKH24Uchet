@@ -74,7 +74,8 @@ const CURRENT_MANAGER = `
    join companies c on c.id = cl.company_id
    where hl2.house_id = h.id and m.ended_at is null
    order by m.started_at desc
-   limit 1) as manager`;
+   limit 1) as manager,
+  exists (select 1 from house_managements_house_lnk hx where hx.house_id = h.id) as has_managements`;
 
 const CURRENT_HOUSES_OF_COMPANY = `
   from house_managements_company_lnk cc
@@ -444,6 +445,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       if (!addressId) return fail(ctx, 404, "NOT_FOUND");
       const [house] = await rows(
         `select h.id, h.address_id, h.address, h.apartments, h.floors, h.year_built,
+                exists (select 1 from house_managements_house_lnk hx where hx.house_id = h.id) as has_managements,
                 h.latitude, h.longitude,
                 ${PLACE_COLUMNS}, t.path_ru, t.path_kk,
                 cx.name as complex_name, cx.slug as complex_slug,

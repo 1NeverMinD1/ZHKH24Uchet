@@ -224,6 +224,11 @@ export const registryMessages = {
     "registry.houses.managed.yes": "Есть обслуживающая компания",
     "registry.houses.managed.no": "Сейчас никто не обслуживает",
     "registry.houses.inComplex": "Только дома в ЖК",
+    "registry.houses.noData": "Нет данных об обслуживающей компании",
+    "registry.houseSummary.noData": "Нет данных об обслуживающей компании.",
+    "registry.houseChip.noData": "Нет данных об управлении",
+    "registry.complex.map": "Расположение",
+    "registry.complex.openMap": "Открыть карту",
 
     "registry.complexes.seoTitle": "Жилые комплексы — реестр ЖКХ",
     "registry.complexes.title": "Жилые комплексы",
@@ -491,6 +496,12 @@ export const registryMessages = {
     "registry.houses.managed.yes": "Қызмет көрсететін компания бар",
     "registry.houses.managed.no": "Қазір ешкім қызмет көрсетпейді",
     "registry.houses.inComplex": "Тек тұрғын кешендегі үйлер",
+    "registry.houses.noData": "Қызмет көрсететін компания туралы дерек жоқ",
+    "registry.houseSummary.noData":
+      "Қызмет көрсететін компания туралы дерек жоқ.",
+    "registry.houseChip.noData": "Басқару туралы дерек жоқ",
+    "registry.complex.map": "Орналасуы",
+    "registry.complex.openMap": "Картаны ашу",
 
     "registry.complexes.seoTitle": "Тұрғын кешендер — ТКШ тізілімі",
     "registry.complexes.title": "Тұрғын кешендер",

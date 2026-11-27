@@ -129,7 +129,11 @@ export default function RegistryHouse() {
         ? t("registry.houseSummary.noneSince", {
             date: formatDate(lastPast.ended_at),
           })
-        : t("registry.houseSummary.none"),
+        : t(
+            house.has_managements
+              ? "registry.houseSummary.none"
+              : "registry.houseSummary.noData",
+          ),
     lastPast &&
       t("registry.houseSummary.before", {
         who: who(lastPast),
@@ -146,8 +150,12 @@ export default function RegistryHouse() {
       ? { key: "managed", tone: "", text: t("registry.houseChip.managed") }
       : {
           key: "managed",
-          tone: "warn",
-          text: t("registry.houseChip.noManager"),
+          tone: house.has_managements ? "warn" : "",
+          text: t(
+            house.has_managements
+              ? "registry.houseChip.noManager"
+              : "registry.houseChip.noData",
+          ),
         },
     past.length > 0 && {
       key: "changes",
@@ -243,7 +251,13 @@ export default function RegistryHouse() {
             <div className="rg__section">
               <h2 className="rg__subtitle">{t("registry.houseSection.now")}</h2>
               {now.length === 0 ? (
-                <p className="rg__status">{t("registry.house.nowEmpty")}</p>
+                <p className="rg__status">
+                  {t(
+                    house.has_managements
+                      ? "registry.house.nowEmpty"
+                      : "registry.houses.noData",
+                  )}
+                </p>
               ) : (
                 <div className="rg__rows">
                   {now.map((m) => (
@@ -390,7 +404,11 @@ export default function RegistryHouse() {
                         <span className="rg__card-meta">
                           {n.manager
                             ? `${t(`registry.type.${n.manager.role}`)} · ${nameOf(n.manager, locale)}`
-                            : t("registry.houses.noManager")}
+                            : t(
+                                n.has_managements
+                                  ? "registry.houses.noManager"
+                                  : "registry.houses.noData",
+                              )}
                         </span>
                       </div>
                     </Link>
