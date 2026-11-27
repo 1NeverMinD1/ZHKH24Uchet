@@ -363,6 +363,15 @@
   &__fact-value {
     font-size: 15px;
     color: #1c1c1c;
+
+    a {
+      color: #3a6ea5;
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
   }
 
   &__ext {

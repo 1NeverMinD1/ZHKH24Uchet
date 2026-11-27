@@ -196,6 +196,7 @@ export const registryMessages = {
     "registry.houseSection.companiesEmpty":
       "На последний срез по адресу нет зарегистрированных компаний",
     "registry.houseSection.about": "О доме",
+    "registry.houseSection.companiesAll": "Показать ещё (всего {count})",
     "registry.houseSection.neighbors": "Другие дома ЖК ({count})",
     "registry.event.manageStart": "Начало обслуживания",
     "registry.event.manageEnd": "Окончание обслуживания",
@@ -435,6 +436,7 @@ export const registryMessages = {
     "registry.houseSection.companiesEmpty":
       "Соңғы деректер бойынша мекенжайда тіркелген компаниялар жоқ",
     "registry.houseSection.about": "Үй туралы",
+    "registry.houseSection.companiesAll": "Тағы көрсету (барлығы {count})",
     "registry.houseSection.neighbors": "Кешендегі басқа үйлер ({count})",
     "registry.event.manageStart": "Қызмет көрсетудің басталуы",
     "registry.event.manageEnd": "Қызмет көрсетудің аяқталуы",

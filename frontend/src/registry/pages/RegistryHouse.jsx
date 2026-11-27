@@ -86,6 +86,7 @@ export default function RegistryHouse() {
   const { id } = useParams();
   const { locale, t } = useLocale();
   const [result, setResult] = useState({ id: null, data: null, failed: false });
+  const [showAllCompanies, setShowAllCompanies] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -308,10 +309,30 @@ export default function RegistryHouse() {
                   </p>
                 ) : (
                   <div className="rg__mini">
-                    {companies.map((c) => (
-                      <CompanyLinkRow key={c.bin} c={c} locale={locale} t={t} />
-                    ))}
+                    {(showAllCompanies ? companies : companies.slice(0, 8)).map(
+                      (c) => (
+                        <CompanyLinkRow
+                          key={c.bin}
+                          c={c}
+                          locale={locale}
+                          t={t}
+                        />
+                      ),
+                    )}
                   </div>
+                )}
+                {companies.length > 8 && (
+                  <button
+                    type="button"
+                    className="rg__panel-link"
+                    onClick={() => setShowAllCompanies((value) => !value)}
+                  >
+                    {showAllCompanies
+                      ? t("registry.section.historyLess")
+                      : t("registry.houseSection.companiesAll", {
+                          count: companies.length,
+                        })}
+                  </button>
                 )}
                 <a
                   className="rg__ext"
